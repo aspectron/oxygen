@@ -142,11 +142,13 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\engine.hpp" />
     <ClInclude Include="src\gl.iface.hpp" />
     <ClInclude Include="src\gl.shader.hpp" />
     <ClInclude Include="src\oxygen.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\engine.cpp" />
     <ClCompile Include="src\oxygen.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -3,39 +3,24 @@
 
 using namespace v8;
 using namespace v8::juice;
-/*
-V8_IMPLEMENT_CLASS_BINDER(aspect::test_class, aspect_test_class);
 
-DECLARE_LIBRARY_ENTRYPOINTS(test_install, test_uninstall);
+V8_IMPLEMENT_CLASS_BINDER(aspect::engine, aspect_engine);
 
-void test_install(Handle<Object> target)
+DECLARE_LIBRARY_ENTRYPOINTS(oxygen_install, oxygen_uninstall);
+
+void oxygen_install(Handle<Object> target)
 {
 //	HandleScope scope;
 
-	ClassBinder<aspect::test_class> *binder = new ClassBinder<aspect::test_class>(target);
-	V8_SET_CLASS_BINDER(aspect::test_class, binder);
-	(*binder)
-		.BindMemFunc<void, &aspect::test_class::test_function_binding>("test_function_binding")
+	ClassBinder<aspect::engine> *binder_engine = new ClassBinder<aspect::engine>(target);
+	V8_SET_CLASS_BINDER(aspect::engine, binder_engine);
+	(*binder_engine)
+		.BindMemFunc<void, &aspect::engine::hello_world>("hello world!")
 		.Seal();
 }
 
-void test_uninstall(Handle<Object> target) 
+void oxygen_uninstall(Handle<Object> target) 
 {
-	V8_DESTROY_CLASS_BINDER(aspect::test_class);
+	V8_DESTROY_CLASS_BINDER(aspect::engine);
 }
 
-namespace v8 { namespace juice {
-
-aspect::test_class * WeakJSClassCreatorOps<aspect::test_class>::Ctor( v8::Arguments const & argv, std::string & exceptionText )
-{
-	return new aspect::test_class();
-}
-
-void WeakJSClassCreatorOps<aspect::test_class>::Dtor( aspect::test_class *o )
-{
-	delete o;
-}
-
-}} // ::v8::juice
-
-*/

@@ -1,4 +1,4 @@
-#define BUILDING_V8_SHARED 1
+// #define BUILDING_V8_SHARED 1
 
 #include "core.hpp"
 #include "v8_core.hpp"
@@ -28,6 +28,8 @@
 
 #include "gl.shader.hpp"
 #include "gl.iface.hpp"
+
+#include "engine.hpp"
 
 /*
 namespace aspect
