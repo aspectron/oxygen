@@ -3,10 +3,33 @@
 #include "core.hpp"
 #include "v8_core.hpp"
 
-// Template Project for creation of SDK library
-// Contains basic test_class class that gets
-// instantiated within v8.
+#include "hydrogen.hpp"
 
+#if OS(WINDOWS)
+//	#pragma warning ( disable : 4251 )
+#if defined(OXYGEN_EXPORTS)
+#define OXYGEN_API __declspec(dllexport)
+#else
+#define OXYGEN_API __declspec(dllimport)
+#endif
+#elif __GNUC__ >= 4
+# define OXYGEN_API __attribute__((visibility("default")))
+#else
+#define OXYGEN_API // nothing, symbols in a shared library are exported by default
+#endif
+
+
+#if OS(WINDOWS)
+#include <GL/glew.h>
+#elif OS(LINUX)
+#include <GL/glxew.h>
+#include <GL/glew.h>
+#endif
+
+#include "gl.shader.hpp"
+#include "gl.iface.hpp"
+
+/*
 namespace aspect
 {
 
@@ -26,3 +49,6 @@ class __declspec(dllexport) test_class
 #define WEAK_CLASS_TYPE aspect::test_class
 #define WEAK_CLASS_NAME test_class
 #include <v8/juice/WeakJSClassCreator-Decl.h>
+
+
+*/

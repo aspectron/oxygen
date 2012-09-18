@@ -1,9 +1,9 @@
-#include "test.hpp"
+#include "oxygen.hpp"
 #include "library.hpp"
 
 using namespace v8;
 using namespace v8::juice;
-
+/*
 V8_IMPLEMENT_CLASS_BINDER(aspect::test_class, aspect_test_class);
 
 DECLARE_LIBRARY_ENTRYPOINTS(test_install, test_uninstall);
@@ -37,3 +37,5 @@ void WeakJSClassCreatorOps<aspect::test_class>::Dtor( aspect::test_class *o )
 }
 
 }} // ::v8::juice
+
+*/

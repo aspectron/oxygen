@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -142,14 +142,12 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\engine.cpp" />
-    <ClCompile Include="src\radium.cpp" />
-    <ClCompile Include="src\window.cpp" />
+    <ClInclude Include="src\gl.iface.hpp" />
+    <ClInclude Include="src\gl.shader.hpp" />
+    <ClInclude Include="src\oxygen.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\engine.hpp" />
-    <ClInclude Include="src\radium.hpp" />
-    <ClInclude Include="src\window.hpp" />
+    <ClCompile Include="src\oxygen.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
