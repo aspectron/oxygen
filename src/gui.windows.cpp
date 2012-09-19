@@ -62,6 +62,7 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpar
 	window *pwnd = window::pwnd_from_hwnd(hwnd);
 	if (pwnd)
 	{
+//		boost::shared_ptr<window> test = pwnd->shared_from_this();
 		pwnd->process_event(message, wparam, lparam);
 	}
 
@@ -220,6 +221,12 @@ void windows_thread::main()
 
 
 // ------------------------------------------------------	
+/*
+boost::shared_ptr<window> window::shared_from_this()
+{
+	return boost::enable_shared_from_this<window>::shared_from_this();
+}
+*/
 
 window::window(const creation_args *args)
 :	hwnd_(NULL),
@@ -240,7 +247,7 @@ window::window(const creation_args *args)
 
 void window::create_window_impl( const creation_args *args) //video_mode mode, const std::string& caption, unsigned long requested_style ) 
 {
-
+//	boost::shared_ptr<window> test = shared_from_this();
 	printf("ENTERED CREATE_WINDOW_IMPL\n");
 
 	// Compute position and size

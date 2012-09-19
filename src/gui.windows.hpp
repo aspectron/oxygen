@@ -33,9 +33,14 @@ namespace aspect
 
 				HDC					hdc_;
 
+
+
 			public:
 
 				V8_DECLARE_CLASS_BINDER(window);
+
+				// boost::shared_ptr<window> shared_from_this();
+
 
 				typedef struct _creation_args
 				{
@@ -81,6 +86,8 @@ namespace aspect
 
 				void process_events(void);
 				void process_events_blocking(void);
+
+				boost::shared_ptr<window> self_;
 		};
 
 		class OXYGEN_API windows_thread

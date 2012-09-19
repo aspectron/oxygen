@@ -68,13 +68,15 @@ aspect::gui::window* WeakJSClassCreatorOps<aspect::gui::window>::Ctor( v8::Argum
 	if(!ca.style)
 		ca.style = AWS_TITLEBAR | AWS_RESIZE | AWS_CLOSE | AWS_APPWINDOW;
 
-
-
+//	boost::shared_ptr<window> ptr(new aspect::gui::window(&ca));
+//	ptr->self_ = ptr;
+//	return ptr.get();
 	return new aspect::gui::window(&ca);
 }
 
 void WeakJSClassCreatorOps<aspect::gui::window>::Dtor( aspect::gui::window *o )
 {
+//	o->self_.reset();
 	delete o;
 }
 
