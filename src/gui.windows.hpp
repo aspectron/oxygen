@@ -16,7 +16,7 @@ namespace aspect
 	namespace gui 
 	{
 
-		class OXYGEN_API window : public boost::enable_shared_from_this<window>//, public window_base
+		class OXYGEN_API window //: // public boost::enable_shared_from_this<window>//, public window_base
 		{
 			private:
 
@@ -87,7 +87,7 @@ namespace aspect
 				void process_events(void);
 				void process_events_blocking(void);
 
-				boost::shared_ptr<window> self_;
+//				boost::shared_ptr<window> self_;
 		};
 
 		class OXYGEN_API windows_thread
