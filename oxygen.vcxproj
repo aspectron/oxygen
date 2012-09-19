@@ -142,14 +142,21 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\engine.hpp" />
-    <ClInclude Include="src\gl.iface.hpp" />
-    <ClInclude Include="src\gl.shader.hpp" />
+    <ClInclude Include="src\gui.hpp" />
+    <ClInclude Include="src\gui.linux.hpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="src\gui.windows.hpp" />
     <ClInclude Include="src\oxygen.hpp" />
+    <ClInclude Include="src\video_modes.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\engine.cpp" />
+    <ClCompile Include="src\gui.linux.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="src\gui.windows.cpp" />
     <ClCompile Include="src\oxygen.cpp" />
+    <ClCompile Include="src\video_modes.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

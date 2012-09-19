@@ -3,8 +3,6 @@
 #include "core.hpp"
 #include "v8_core.hpp"
 
-#include "hydrogen.hpp"
-
 #if OS(WINDOWS)
 //	#pragma warning ( disable : 4251 )
 #if defined(OXYGEN_EXPORTS)
@@ -18,20 +16,16 @@
 #define OXYGEN_API // nothing, symbols in a shared library are exported by default
 #endif
 
-
+#include "video_modes.hpp"
+#include "gui.hpp"
 #if OS(WINDOWS)
-#include <GL/glew.h>
+#include "gui.windows.hpp"
 #elif OS(LINUX)
-#include <GL/glxew.h>
-#include <GL/glew.h>
+#include "gui.linux.hpp"
 #endif
 
-#include "gl.shader.hpp"
-#include "gl.iface.hpp"
-
-#include "engine.hpp"
-
 /*
+
 namespace aspect
 {
 
@@ -51,6 +45,5 @@ class __declspec(dllexport) test_class
 #define WEAK_CLASS_TYPE aspect::test_class
 #define WEAK_CLASS_NAME test_class
 #include <v8/juice/WeakJSClassCreator-Decl.h>
-
 
 */
