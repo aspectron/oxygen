@@ -378,6 +378,11 @@ void window::process_event( UINT message, WPARAM wparam, LPARAM lparam )
 	if(hwnd_ == NULL)
 		return;
 
+	std::vector<boost::shared_ptr<event_sink>>::iterator iter;
+	for(iter = event_sinks_.begin(); iter != event_sinks_.end(); iter++)
+		if(!(*iter)->process_events(message,wparam,lparam))
+			return;
+
 	switch(message)
 	{
 		case WM_SIZE:

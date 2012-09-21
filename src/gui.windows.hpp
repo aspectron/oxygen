@@ -18,20 +18,6 @@ namespace aspect
 
 		class OXYGEN_API window //: // public boost::enable_shared_from_this<window>//, public window_base
 		{
-			private:
-
-				volatile HWND hwnd_;
-				HCURSOR cursor_;
-				bool	fullscreen_;
-				unsigned long style_;
-				bool terminating_;
-				volatile bool valid_;
-				uint32_t width_;
-				uint32_t height_;
-
-				// ~~~
-
-				HDC					hdc_;
 
 
 
@@ -40,6 +26,32 @@ namespace aspect
 				V8_DECLARE_CLASS_BINDER(window);
 
 				// boost::shared_ptr<window> shared_from_this();
+
+				class event_sink : public shared_ptr_object<event_sink> //boost::enable_shared_from_this<event_sink>
+				{
+					public:
+						event_sink()
+							: window_(NULL)
+						{
+
+						}
+						virtual ~event_sink() { }
+						
+						virtual bool process_events(UINT message, WPARAM wparam, LPARAM lparam) = 0;
+						void assoc(window *w) { window_ = w; }
+						void unregister() 
+						{ 
+							if(window_) 
+							{
+								window_->unregister_event_sink(shared_from_this()); 
+								window_ = NULL;
+							}
+						}
+
+					private:
+
+						window *window_;
+				};
 
 
 				typedef struct _creation_args
@@ -88,6 +100,44 @@ namespace aspect
 				void process_events_blocking(void);
 
 //				boost::shared_ptr<window> self_;
+
+				void register_event_sink(boost::shared_ptr<event_sink>& sink)
+				{
+					event_sinks_.push_back(sink);
+					sink->assoc(this);
+				}
+
+				void unregister_event_sink(boost::shared_ptr<event_sink>& sink)
+				{
+					std::vector<boost::shared_ptr<event_sink>>::iterator iter;
+					for(iter = event_sinks_.begin(); iter != event_sinks_.end(); iter++)
+					{
+						if((*iter).get() == sink.get())
+						{
+							event_sinks_.erase(iter);
+							return;
+						}
+					}
+
+				}
+
+			private:
+
+				volatile HWND hwnd_;
+				HCURSOR cursor_;
+				bool	fullscreen_;
+				unsigned long style_;
+				bool terminating_;
+				volatile bool valid_;
+				uint32_t width_;
+				uint32_t height_;
+
+				// ~~~
+
+				HDC					hdc_;
+
+				std::vector<boost::shared_ptr<event_sink>> event_sinks_;
+
 		};
 
 		class OXYGEN_API windows_thread

@@ -2,6 +2,7 @@
 
 #include "core.hpp"
 #include "v8_core.hpp"
+#include "shared_ptr_object.hpp"
 
 #if OS(WINDOWS)
 //	#pragma warning ( disable : 4251 )
