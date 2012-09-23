@@ -19,6 +19,7 @@ void oxygen_install(Handle<Object> target)
 	(*binder_window)
 		.BindMemFunc<void, &window::test_function_binding>("test_function_binding")
 		.BindMemFunc<void, &window::destroy_window>("destroy")
+		.BindMemFunc<&window::get_client_rect>("get_client_rect")
 		.Seal();
 
 	// ---
@@ -77,7 +78,8 @@ aspect::gui::window* WeakJSClassCreatorOps<aspect::gui::window>::Ctor( v8::Argum
 void WeakJSClassCreatorOps<aspect::gui::window>::Dtor( aspect::gui::window *o )
 {
 //	o->self_.reset();
-	delete o;
+//	delete o;
+	o->release();
 }
 
 }} // ::v8::juice

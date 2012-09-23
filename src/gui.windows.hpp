@@ -16,7 +16,7 @@ namespace aspect
 	namespace gui 
 	{
 
-		class OXYGEN_API window //: // public boost::enable_shared_from_this<window>//, public window_base
+		class OXYGEN_API window : public shared_ptr_object<window> //: // public boost::enable_shared_from_this<window>//, public window_base
 		{
 
 
@@ -120,6 +120,8 @@ namespace aspect
 					}
 
 				}
+
+				v8::Handle<v8::Value> get_client_rect(v8::Arguments const&);
 
 			private:
 

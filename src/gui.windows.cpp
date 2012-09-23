@@ -1,5 +1,8 @@
 #include "oxygen.hpp"
 
+using namespace v8;
+using namespace v8::juice;
+
 namespace aspect { namespace gui {
 
 boost::shared_ptr<windows_thread>	gs_windows_thread;
@@ -19,7 +22,7 @@ void init(HINSTANCE hinstance)
 	gs_hbrush = CreateSolidBrush(RGB(0, 0, 0));
 
 	// we must specify the attribs for the window's class
-	wc.style			= CS_HREDRAW|CS_VREDRAW|CS_OWNDC;	// style bits (CS_OWNDC very important for OGL)
+	wc.style			= CS_HREDRAW|CS_VREDRAW|CS_OWNDC|CS_DBLCLKS;	// style bits (CS_OWNDC very important for OGL)
 	wc.lpfnWndProc		= (WNDPROC)window_proc;					// window procedure to use
 	wc.cbClsExtra		= 0;								// no extra data
 	wc.cbWndExtra		= 0;								// no extra data
@@ -110,7 +113,7 @@ public:
 
 	void run()
 	{
-		aspect::utils::set_thread_name("oxygen");
+//		aspect::utils::set_thread_name("oxygen");
 
 		while ( !is_terminating_ )
 		{
@@ -184,7 +187,7 @@ windows_thread::windows_thread()
 
 
 //	task_queue_.reset(new async_queue(cfg_.task_thread_count));
-	task_queue_.reset(new async_queue(1));
+	task_queue_.reset(new async_queue("OXYGEN",1));
 
 
 	boost::posix_time::time_duration interval(boost::posix_time::microseconds(1000000 / 30));
@@ -439,6 +442,23 @@ void window::switch_to_fullscreen( const video_mode& mode )
 	SetWindowLong(*this, GWL_STYLE, style | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 
 	fullscreen_ = true;
+}
+
+v8::Handle<v8::Value> window::get_client_rect( v8::Arguments const& )
+{
+	HandleScope scope;
+
+	Handle<Object> o = Object::New();
+
+	RECT rc;
+	GetClientRect(*this, &rc);
+
+	o->Set(String::New("left"), convert::UInt32ToJS(rc.left));
+	o->Set(String::New("top"), convert::UInt32ToJS(rc.top));
+	o->Set(String::New("width"), convert::UInt32ToJS(rc.right-rc.left));
+	o->Set(String::New("height"), convert::UInt32ToJS(rc.bottom-rc.top));
+
+	return scope.Close(o);
 }
 
 
