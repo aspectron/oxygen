@@ -8,6 +8,8 @@
 
 #include "async_queue.hpp"
 #include "events.hpp"
+#include "runtime.hpp"
+#include "v8_main_loop.hpp"
 
 #include "boost/enable_shared_from_this.hpp"
 
@@ -16,7 +18,7 @@ namespace aspect
 	namespace gui 
 	{
 
-		class OXYGEN_API window : public shared_ptr_object<window> //: // public boost::enable_shared_from_this<window>//, public window_base
+		class OXYGEN_API window : public shared_ptr_object<window>//, public event_handler<uint32_t> // public boost::enable_shared_from_this<window>//, public window_base
 		{
 
 
@@ -53,6 +55,42 @@ namespace aspect
 						window *window_;
 				};
 
+				class input_event
+				{
+					public:
+
+						input_event(std::string const& type)
+							: type_(type)
+						{
+							init();
+						}
+
+						void init()
+						{
+							vk_code_ = 0; scancode_ = charcode_ = 0;
+							char_[0] = char_[1] = 0;
+							mod_ctrl_ = HIWORD(GetAsyncKeyState(VK_CONTROL)) ? true : false;
+							mod_alt_ =  HIWORD(GetAsyncKeyState(VK_MENU)) ? true : false;
+							mod_lshift_ = HIWORD(GetAsyncKeyState(VK_SHIFT)) ? true : false;
+							mod_rshift_ = HIWORD(GetAsyncKeyState(VK_LSHIFT)) ? true : false;
+							mod_shift_ = mod_lshift_ || mod_rshift_;
+						}
+
+						std::string type_;
+						math::vec2 cursor_;
+						uint32_t vk_code_;
+						uint32_t scancode_;
+						uint32_t charcode_;
+						char char_[2];
+
+						bool mod_ctrl_;
+						bool mod_alt_;
+						bool mod_rshift_;
+						bool mod_lshift_;
+						bool mod_shift_;
+
+
+				};
 
 				typedef struct _creation_args
 				{
@@ -98,6 +136,9 @@ namespace aspect
 
 				void process_events(void);
 				void process_events_blocking(void);
+				void v8_process_message(uint32_t message, uint32_t wparam, uint32_t lparam);
+				void v8_process_input_event(boost::shared_ptr<input_event> e);
+				void v8_process_event(std::string const&);
 
 //				boost::shared_ptr<window> self_;
 
@@ -121,8 +162,15 @@ namespace aspect
 
 				}
 
-				v8::Handle<v8::Value> get_client_rect(v8::Arguments const&);
+				v8::Handle<v8::Value> on(std::string const& name, v8::Handle<v8::Value> fn);
+				v8::Handle<v8::Value> off(std::string const& name);
 
+				void window::show_frame(bool show);
+				void window::set_topmost(bool topmost);
+
+				void window::set_window_rect(uint32_t l, uint32_t t, uint32_t w, uint32_t h);
+				v8::Handle<v8::Value> get_window_rect(v8::Arguments const&);
+				v8::Handle<v8::Value> get_client_rect(v8::Arguments const&);
 			private:
 
 				volatile HWND hwnd_;
@@ -140,6 +188,10 @@ namespace aspect
 
 				std::vector<boost::shared_ptr<event_sink>> event_sinks_;
 
+				event_handler<uint32_t>			message_handlers_;
+				event_handler<std::string>		event_handlers_;
+
+				bool	message_handling_enabled_;	// user has installed message handler
 		};
 
 		class OXYGEN_API windows_thread

@@ -5,13 +5,34 @@
 using namespace v8;
 using namespace v8::juice;
 
+// ----------------------------------------------------------------------
+
+Handle<Value> get_screen_size(Arguments const&)
+{
+	HandleScope scope;
+
+	Handle<Object> o = Object::New();
+
+	o->Set(String::New("width"), convert::UInt32ToJS(GetSystemMetrics(SM_CXSCREEN)));
+	o->Set(String::New("height"), convert::UInt32ToJS(GetSystemMetrics(SM_CYSCREEN)));
+
+	return scope.Close(o);
+}
+
+// ----------------------------------------------------------------------
+
 V8_IMPLEMENT_CLASS_BINDER(aspect::gui::window, aspect_window);
 
 DECLARE_LIBRARY_ENTRYPOINTS(oxygen_install, oxygen_uninstall);
 
 void oxygen_install(Handle<Object> target)
 {
-//	HandleScope scope;
+#if OS(WINDOWS)
+	aspect::gui::init((HINSTANCE)GetModuleHandle(NULL));
+#else
+	aspect::gui::init();
+#endif
+
 	using namespace aspect::gui;
 
 	ClassBinder<aspect::gui::window> *binder_window = new ClassBinder<aspect::gui::window>(target);
@@ -19,16 +40,20 @@ void oxygen_install(Handle<Object> target)
 	(*binder_window)
 		.BindMemFunc<void, &window::test_function_binding>("test_function_binding")
 		.BindMemFunc<void, &window::destroy_window>("destroy")
+		.BindMemFunc<Handle<Value>, string const&, Handle<Value>, &window::on>("on")
+		.BindMemFunc<Handle<Value>, string const&, &window::off>("off")
 		.BindMemFunc<&window::get_client_rect>("get_client_rect")
+		.BindMemFunc<&window::get_window_rect>("get_window_rect")
+		.BindMemFunc<void, uint32_t, uint32_t, uint32_t, uint32_t, &window::set_window_rect>("set_window_rect")
+		.BindMemFunc<void, bool, &window::show_frame>("show_frame")
+		.BindMemFunc<void, bool, &window::set_topmost>("set_topmost")
 		.Seal();
 
 	// ---
 
-#if OS(WINDOWS)
-	aspect::gui::init((HINSTANCE)GetModuleHandle(NULL));
-#else
-	aspect::gui::init();
-#endif
+	V8_DECLARE_FUNCTION(target, get_screen_size);
+
+
 }
 
 void oxygen_uninstall(Handle<Object> target) 

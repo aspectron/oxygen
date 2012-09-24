@@ -217,7 +217,7 @@ bool windows_thread::schedule(callback cb)
 void windows_thread::main()
 {
 
-	printf("WINDOWS THREAD RUNNING...\n");
+//	printf("WINDOWS THREAD RUNNING...\n");
 
 	main_loop_->run();
 }
@@ -234,7 +234,8 @@ boost::shared_ptr<window> window::shared_from_this()
 window::window(const creation_args *args)
 :	hwnd_(NULL),
 	style_(0),
-	fullscreen_(false)
+	fullscreen_(false),
+	message_handling_enabled_(false)
 {
 	windows_thread::schedule(boost::bind(&window::create_window_impl, this, args));
 
@@ -251,7 +252,7 @@ window::window(const creation_args *args)
 void window::create_window_impl( const creation_args *args) //video_mode mode, const std::string& caption, unsigned long requested_style ) 
 {
 //	boost::shared_ptr<window> test = shared_from_this();
-	printf("ENTERED CREATE_WINDOW_IMPL\n");
+//	printf("ENTERED CREATE_WINDOW_IMPL\n");
 
 	// Compute position and size
 	int left   = (GetDeviceCaps(GetDC(NULL), HORZRES) - args->width)  / 2;
@@ -293,7 +294,7 @@ void window::create_window_impl( const creation_args *args) //video_mode mode, c
 
 	hwnd_ = CreateWindowA("jsx_generic", args->caption.c_str(), style, left, top, width, height, NULL, NULL, GetModuleHandle(NULL), this);
 
-	printf("WINDOW CREATED: %08x\n",(int)hwnd_);
+//	printf("WINDOW CREATED: %08x\n",(int)hwnd_);
 
 #endif				  
 
@@ -306,10 +307,17 @@ void window::create_window_impl( const creation_args *args) //video_mode mode, c
 */
 	// Get the actual size of the window, which can be smaller even after the call to AdjustWindowRect
 	// This happens when the window is bigger than the desktop
-	RECT actual_rect;
-	GetClientRect(*this, &actual_rect);
-	width_  = actual_rect.right - actual_rect.left;
-	height_ = actual_rect.bottom - actual_rect.top;
+	RECT client_rect;
+	GetClientRect(*this, &client_rect);
+	width_  = client_rect.right - client_rect.left;
+	height_ = client_rect.bottom - client_rect.top;
+
+	HDC hdc = GetDC(hwnd_);
+	HBRUSH hBrush = CreateSolidBrush(0);
+	FillRect(hdc,&client_rect,hBrush);
+	DeleteObject(hBrush);
+	ReleaseDC(hwnd_,hdc);
+
 }
 
 window::~window()
@@ -404,8 +412,150 @@ void window::process_event( UINT message, WPARAM wparam, LPARAM lparam )
 //				set_terminating();
 				PostQuitMessage(true);
 			}
+
+
+			if(event_handlers_.has("close"))
+				runtime::main_loop().schedule(boost::bind(&window::v8_process_event, this, std::string("close")));
+
+
+//			if(event_handlers_.has("close"))
+//				runtime::main_loop().schedule(boost::bind(&window::v8_process_event, this, (uint32_t)message, (uint32_t)wparam, (uint32_t)lparam));
+
 		} break;
+
+		case WM_MOUSEMOVE: 
+			{
+				boost::shared_ptr<input_event> e = boost::make_shared<input_event>("mousemove");//
+				e->cursor_.x = (double)LOWORD(lparam);
+				e->cursor_.y = (double)HIWORD(lparam);
+				runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
+			} break;
+#if 0
+		case WM_LBUTTONDOWN: { delegate_->mouse_button(0,true); } break;
+		case WM_MBUTTONDOWN: { delegate_->mouse_button(1,true); } break;
+		case WM_RBUTTONDOWN: { delegate_->mouse_button(2,true); } break;
+		case WM_LBUTTONUP: { delegate_->mouse_button(0,false); } break;
+		case WM_MBUTTONUP: { delegate_->mouse_button(1,false); } break;
+		case WM_RBUTTONUP: { delegate_->mouse_button(2,false); } break;
+
+		case WM_LBUTTONDBLCLK: { delegate_->mouse_button(0,true,2);  delegate_->mouse_button(0,false,2); } break;
+		case WM_MBUTTONDBLCLK: { delegate_->mouse_button(1,true,2); delegate_->mouse_button(1,false,2); } break;
+		case WM_RBUTTONDBLCLK: { delegate_->mouse_button(2,true,2); delegate_->mouse_button(2,false,2); } break;
+
+		case WM_MOUSEWHEEL:
+			{
+				signed short delta = HIWORD(wparam);
+				delegate_->mouse_wheel(0,delta);
+			} break;
+
+		case WM_MOUSEHWHEEL:
+			{
+				signed short delta = HIWORD(wparam);
+				delegate_->mouse_wheel(delta,0);
+			} break;
+#endif
+
+		case WM_KEYDOWN:
+			{
+				if(event_handlers_.has("keyup"))
+				{
+					boost::shared_ptr<input_event> e = boost::make_shared<input_event>("keyup");
+					e->vk_code_ = (uint32_t)wparam;
+					e->scancode_ = MapVirtualKey(e->vk_code_, MAPVK_VK_TO_VSC);
+					if(isalnum(e->vk_code_))
+					{
+						e->charcode_ = e->vk_code_;
+						e->char_[0] = (char)wparam;
+						e->char_[1] = 0;
+					}
+					runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
+				}
+
+			} break;
+
+		case WM_KEYUP:
+			{
+				if(event_handlers_.has("keydown"))
+				{
+					boost::shared_ptr<input_event> e = boost::make_shared<input_event>("keydown");
+					e->vk_code_ = (uint32_t)wparam;
+					e->scancode_ = MapVirtualKey(e->vk_code_, MAPVK_VK_TO_VSC);
+					if(isalnum(e->vk_code_))
+					{
+						e->charcode_ = e->vk_code_;
+						e->char_[0] = (char)wparam;
+						e->char_[1] = 0;
+					}
+					runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
+				}
+
+			} break;
+
+		case WM_CHAR:
+			{
+//				uint32_t code = wparam;
+//				std::string text;
+//				delegate_->text_event_2(code, text);
+				if(event_handlers_.has("char"))
+				{
+					boost::shared_ptr<input_event> e = boost::make_shared<input_event>("keydown");
+					e->charcode_ = (uint32_t)wparam;
+					e->char_[0] = (char)wparam;
+					e->char_[1] = 0;
+					// e->scancode_ = MapVirtualKey(e->vk_code_, MAPVK_VK_TO_VSC);
+					runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
+				}
+
+			} break;
+
 	}
+
+//	if(message_handlers_.has((uint32_t)message))
+	if(message_handling_enabled_)
+		runtime::main_loop().schedule(boost::bind(&window::v8_process_message, this, (uint32_t)message, (uint32_t)wparam, (uint32_t)lparam));
+}
+
+// void window::v8_process_event(std::string event)
+// {
+// 
+// }
+
+void window::v8_process_message(uint32_t message, uint32_t wparam, uint32_t lparam)
+{
+	v8::Handle<v8::Value> args[3] = { convert::CastToJS(message), convert::CastToJS(wparam), convert::CastToJS(lparam) };
+	event_handlers_.call("message", convert::CastToJS(this)->ToObject(), 3, args);
+}
+
+void window::v8_process_event(std::string const& type)
+{
+	event_handlers_.call(type, convert::CastToJS(this)->ToObject(), 0, NULL);
+}
+
+void window::v8_process_input_event(boost::shared_ptr<input_event> e)
+{
+	Handle<Object> o = Object::New();
+
+	o->Set(String::New("type"), String::New(e->type_.c_str()));
+
+	Handle<Object> modifiers = Object::New();
+	o->Set(String::New("modifiers"), modifiers);
+	modifiers->Set(String::New("ctrl"),  convert::BoolToJS(e->mod_ctrl_));
+	modifiers->Set(String::New("alt"),   convert::BoolToJS(e->mod_alt_));
+	modifiers->Set(String::New("shift"), convert::BoolToJS(e->mod_shift_));
+	modifiers->Set(String::New("lshift"), convert::BoolToJS(e->mod_lshift_));
+	modifiers->Set(String::New("rshift"), convert::BoolToJS(e->mod_rshift_));
+
+	//uint32_t vk_code = wparam;
+	//uint32_t scancode = MapVirtualKey(vk_code, MAPVK_VK_TO_VSC);
+
+	o->Set(String::New("vk_code"), convert::UInt32ToJS(e->vk_code_));
+	o->Set(String::New("scancode"), convert::UInt32ToJS(e->scancode_));
+	o->Set(String::New("charcode"), convert::UInt32ToJS(e->charcode_));
+	o->Set(String::New("char"), String::New(e->char_));
+
+
+	v8::Handle<v8::Value> args[1] = { o };
+	event_handlers_.call(e->type_, convert::CastToJS(this)->ToObject(), 1, args);
 }
 
 void window::show( bool visible )
@@ -444,6 +594,71 @@ void window::switch_to_fullscreen( const video_mode& mode )
 	fullscreen_ = true;
 }
 
+/*
+void window::toggle_fullscreen(void)
+{
+	if(fullscreen_)
+	{
+		WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_VISIBLE
+		SetWindowLong(*this, GWL_STYLE,   WS_POPUP);
+		SetWindowLong(*this, GWL_EXSTYLE, WS_EX_APPWINDOW);
+	}
+	else
+	{
+		// Change window style (no border, no titlebar, ...)
+		SetWindowLong(*this, GWL_STYLE,   WS_POPUP);
+		SetWindowLong(*this, GWL_EXSTYLE, WS_EX_APPWINDOW);
+
+		ShowWindow(*this,SW_MAXIMIZE);
+	}
+}
+*/
+
+void window::show_frame(bool show)
+{	
+	if(show)
+	{
+		SetWindowLong(*this, GWL_STYLE,   WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_VISIBLE);
+//		SetWindowLong(*this, GWL_EXSTYLE, WS_EX_APPWINDOW);
+	}
+	else
+	{
+		SetWindowLong(*this, GWL_STYLE,   WS_POPUP | WS_CLIPCHILDREN | WS_VISIBLE);
+//		SetWindowLong(*this, GWL_EXSTYLE, WS_EX_APPWINDOW);
+//		SetWindowPos(*this, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOREPOSITION);
+	}
+}
+
+void window::set_window_rect(uint32_t l, uint32_t t, uint32_t w, uint32_t h)
+{
+	SetWindowPos(*this, NULL, l, t, w, h, SWP_SHOWWINDOW);
+}
+
+void window::set_topmost(bool topmost)
+{
+	if(topmost)
+		SetWindowPos(*this, HWND_TOP, 0,0,0,0, SWP_NOMOVE | SWP_NOREPOSITION);
+	else
+		SetWindowPos(*this, NULL, 0,0,0,0, SWP_NOMOVE | SWP_NOREPOSITION);
+}
+
+v8::Handle<v8::Value> window::get_window_rect( v8::Arguments const& )
+{
+	HandleScope scope;
+
+	Handle<Object> o = Object::New();
+
+	RECT rc;
+	GetWindowRect(*this, &rc);
+
+	o->Set(String::New("left"), convert::UInt32ToJS(rc.left));
+	o->Set(String::New("top"), convert::UInt32ToJS(rc.top));
+	o->Set(String::New("width"), convert::UInt32ToJS(rc.right-rc.left));
+	o->Set(String::New("height"), convert::UInt32ToJS(rc.bottom-rc.top));
+
+	return scope.Close(o);
+}
+
 v8::Handle<v8::Value> window::get_client_rect( v8::Arguments const& )
 {
 	HandleScope scope;
@@ -460,6 +675,22 @@ v8::Handle<v8::Value> window::get_client_rect( v8::Arguments const& )
 
 	return scope.Close(o);
 }
+
+v8::Handle<v8::Value> window::on(std::string const& name, Handle<Value> fn)
+{
+	if(name == "message")
+		message_handling_enabled_ = true;
+
+	event_handlers_.on(name,fn);
+	return convert::CastToJS(this);
+}
+
+v8::Handle<v8::Value> window::off(std::string const& name)
+{
+	event_handlers_.off(name);
+	return convert::CastToJS(this);
+}
+
 
 
 } } // namespace aspect::gui
