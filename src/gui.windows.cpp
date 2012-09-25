@@ -342,11 +342,11 @@ void window::destroy_window_impl( void )
 {
 	if(hwnd_)
 	{
-		if(fullscreen_)
-		{
-			ChangeDisplaySettings(NULL,0);
-			show_mouse_cursor(true);
-		}
+// 		if(fullscreen_)
+// 		{
+// 			ChangeDisplaySettings(NULL,0);
+// 			show_mouse_cursor(true);
+// 		}
 
 		::DestroyWindow(hwnd_);
 		hwnd_ = NULL;

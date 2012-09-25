@@ -1,3 +1,9 @@
+//
+// Win32 API Interface for JSX
+// Copyright (C) 2010-2012 ASPECTRON Inc.
+// All Rights Reserved.
+//
+
 var _ = require('underscore');
 
 var oxygen = (function()
