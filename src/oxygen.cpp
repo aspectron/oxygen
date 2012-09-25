@@ -47,6 +47,7 @@ void oxygen_install(Handle<Object> target)
 		.BindMemFunc<void, uint32_t, uint32_t, uint32_t, uint32_t, &window::set_window_rect>("set_window_rect")
 		.BindMemFunc<void, bool, &window::show_frame>("show_frame")
 		.BindMemFunc<void, bool, &window::set_topmost>("set_topmost")
+		.BindMemFunc<void, std::string const&, &window::load_icon_from_file>("load_icon_from_file")
 		.Seal();
 
 	// ---

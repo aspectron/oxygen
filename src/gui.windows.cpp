@@ -1,4 +1,5 @@
 #include "oxygen.hpp"
+#include "shellapi.h"
 
 using namespace v8;
 using namespace v8::juice;
@@ -235,7 +236,8 @@ window::window(const creation_args *args)
 :	hwnd_(NULL),
 	style_(0),
 	fullscreen_(false),
-	message_handling_enabled_(false)
+	message_handling_enabled_(false),
+	drag_accept_files_enabled_(false)
 {
 	windows_thread::schedule(boost::bind(&window::create_window_impl, this, args));
 
@@ -405,6 +407,12 @@ void window::process_event( UINT message, WPARAM wparam, LPARAM lparam )
 
 		} break;
 
+		case WM_DESTROY:
+		{
+			if(drag_accept_files_enabled_)
+				DragAcceptFiles(*this, FALSE);
+		} break;
+
 		case WM_CLOSE:
 		{
 			if(style_ & AWS_APPWINDOW)
@@ -507,6 +515,24 @@ void window::process_event( UINT message, WPARAM wparam, LPARAM lparam )
 				}
 
 			} break;
+
+
+		case WM_DROPFILES:
+			{
+					HDROP hDrop = (HDROP) wparam;
+					boost::shared_ptr<std::vector<std::string>> files = boost::make_shared<std::vector<std::string>>();
+					uint32_t count = DragQueryFile(hDrop, (UINT)-1, NULL, NULL);
+					for(uint32_t i = 0; i < count; i++)
+					{
+						char buffer[1024];
+						DragQueryFileA(hDrop,i,buffer,sizeof(buffer));
+						files->push_back(buffer);
+					}
+					DragFinish(hDrop);
+					runtime::main_loop().schedule(boost::bind(&window::drag_accept_files, this, files));
+					
+			} break;
+
 
 	}
 
@@ -681,6 +707,9 @@ v8::Handle<v8::Value> window::on(std::string const& name, Handle<Value> fn)
 	if(name == "message")
 		message_handling_enabled_ = true;
 
+	if(name == "drag_accept_files")
+		runtime::main_loop().schedule(boost::bind(&window::drag_accept_files_enable_impl, this));
+
 	event_handlers_.on(name,fn);
 	return convert::CastToJS(this);
 }
@@ -691,7 +720,38 @@ v8::Handle<v8::Value> window::off(std::string const& name)
 	return convert::CastToJS(this);
 }
 
+void window::load_icon_from_file( std::string const& file)
+{
+	runtime::main_loop().schedule(boost::bind(&window::load_icon_from_file_impl, this, file));
+}
 
+void window::load_icon_from_file_impl( std::string const& file)
+{
+	HANDLE hIcon = LoadImageA(NULL, file.c_str(), IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
+	if(hIcon)
+		SendMessage(*this, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+
+	hIcon = LoadImageA(NULL, file.c_str(), IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
+	if(hIcon)
+		SendMessage(*this, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+}
+
+void window::drag_accept_files_enable_impl(void)
+{
+	drag_accept_files_enabled_ = true;
+	DragAcceptFiles(*this,TRUE);
+}
+
+void window::drag_accept_files(boost::shared_ptr<std::vector<std::string>> files)
+{
+
+	Handle<Array> list = Array::New(files->size());
+	for(size_t i = 0; i < files->size(); i++)
+		list->Set(i, String::New((*files)[i].c_str()));
+
+	v8::Handle<v8::Value> args[1] = { list };
+	event_handlers_.call("drag_accept_files", convert::CastToJS(this)->ToObject(), 1, args);
+}
 
 } } // namespace aspect::gui
 

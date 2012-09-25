@@ -165,12 +165,17 @@ namespace aspect
 				v8::Handle<v8::Value> on(std::string const& name, v8::Handle<v8::Value> fn);
 				v8::Handle<v8::Value> off(std::string const& name);
 
-				void window::show_frame(bool show);
-				void window::set_topmost(bool topmost);
+				void show_frame(bool show);
+				void set_topmost(bool topmost);
 
-				void window::set_window_rect(uint32_t l, uint32_t t, uint32_t w, uint32_t h);
+				void set_window_rect(uint32_t l, uint32_t t, uint32_t w, uint32_t h);
 				v8::Handle<v8::Value> get_window_rect(v8::Arguments const&);
 				v8::Handle<v8::Value> get_client_rect(v8::Arguments const&);
+
+				void load_icon_from_file(std::string const&);
+				void load_icon_from_file_impl(std::string const&);
+				void drag_accept_files_enable_impl(void);
+				void drag_accept_files(boost::shared_ptr<std::vector<std::string>> files);
 			private:
 
 				volatile HWND hwnd_;
@@ -192,6 +197,8 @@ namespace aspect
 				event_handler<std::string>		event_handlers_;
 
 				bool	message_handling_enabled_;	// user has installed message handler
+
+				bool	drag_accept_files_enabled_;
 		};
 
 		class OXYGEN_API windows_thread
