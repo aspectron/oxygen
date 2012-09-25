@@ -294,6 +294,11 @@ void window::create_window_impl( const creation_args *args) //video_mode mode, c
 
 	DWORD style =  WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_VISIBLE;
 
+	std::string caption = args->caption;
+#if TARGET(DEBUG)
+	caption += " (DEBUG)";
+#endif
+
 	hwnd_ = CreateWindowA("jsx_generic", args->caption.c_str(), style, left, top, width, height, NULL, NULL, GetModuleHandle(NULL), this);
 
 //	printf("WINDOW CREATED: %08x\n",(int)hwnd_);
