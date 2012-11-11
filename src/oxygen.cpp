@@ -47,6 +47,7 @@ void oxygen_install(Handle<Object> target)
 		.BindMemFunc<void, uint32_t, uint32_t, uint32_t, uint32_t, &window::set_window_rect>("set_window_rect")
 		.BindMemFunc<void, bool, &window::show_frame>("show_frame")
 		.BindMemFunc<void, bool, &window::set_topmost>("set_topmost")
+//		.BindMemFunc<void, std::string, &window::use_as_splash_screen>("use_as_splash_screen")
 		.BindMemFunc<void, std::string const&, &window::load_icon_from_file>("load_icon_from_file")
 		.Seal();
 
@@ -94,6 +95,10 @@ aspect::gui::window* WeakJSClassCreatorOps<aspect::gui::window>::Ctor( v8::Argum
 	ca.style = convert::JSToUInt32(o->Get(String::New("style")));
 	if(!ca.style)
 		ca.style = AWS_TITLEBAR | AWS_RESIZE | AWS_CLOSE | AWS_APPWINDOW;
+
+	Handle<Value> splash = o->Get(String::New("splash"));
+	if(splash->IsString())
+		ca.splash = convert::JSToStdString(splash);
 
 //	boost::shared_ptr<window> ptr(new aspect::gui::window(&ca));
 //	ptr->self_ = ptr;

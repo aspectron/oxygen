@@ -292,7 +292,10 @@ void window::create_window_impl( const creation_args *args) //video_mode mode, c
 	hwnd_ = CreateWindowW(L"jsx", wcs_caption, style, left, top, width, height, NULL, NULL, GetModuleHandle(NULL), this);
 #else
 
-	DWORD style =  WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_VISIBLE;
+	DWORD style =  WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN; // | WS_VISIBLE;
+
+	if(!args->splash.length())
+		style |= WS_VISIBLE;
 
 	std::string caption = args->caption;
 #if TARGET(DEBUG)
@@ -325,6 +328,11 @@ void window::create_window_impl( const creation_args *args) //video_mode mode, c
 	DeleteObject(hBrush);
 	ReleaseDC(hwnd_,hdc);
 
+	if(args->splash.length())
+	{
+		use_as_splash_screen(args->splash);
+		ShowWindow(*this,SW_SHOW);
+	}
 }
 
 window::~window()
@@ -538,12 +546,68 @@ void window::process_event( UINT message, WPARAM wparam, LPARAM lparam )
 					
 			} break;
 
+		case WM_PAINT:
+			{
+//				PAINTSTRUCT ps;
 
+				if(splash_bitmap_.get())
+				{
+					HDC hdc = ::GetDC(*this);
+
+					BITMAPFILEHEADER *bfh = (BITMAPFILEHEADER *)splash_bitmap_.get();
+					
+					BITMAPINFO *bmi = (BITMAPINFO *)(bfh+1);
+
+					void *data = ((uint8_t*)bfh + bfh->bfOffBits);
+
+
+					::SetDIBitsToDevice(hdc,0,0,bmi->bmiHeader.biWidth,bmi->bmiHeader.biHeight,
+						0,0,
+						0,bmi->bmiHeader.biHeight,
+						data, bmi, DIB_RGB_COLORS);
+
+					::ReleaseDC(*this, hdc);
+				}
+
+
+			} break;
 	}
 
 //	if(message_handlers_.has((uint32_t)message))
 	if(message_handling_enabled_)
 		runtime::main_loop().schedule(boost::bind(&window::v8_process_message, this, (uint32_t)message, (uint32_t)wparam, (uint32_t)lparam));
+}
+
+
+void window::use_as_splash_screen(std::string filename)
+{
+
+	FILE *fp = fopen(filename.c_str(), "rb");
+	if(!fp)
+		return;
+	fseek(fp,0,SEEK_END);
+	long len = ftell(fp);
+	fseek(fp,0,SEEK_SET);
+	if(!len)
+	{
+		fclose(fp);
+		return;
+	}
+	splash_bitmap_.reset((uint8_t*)malloc(len));
+	fread(splash_bitmap_.get(),len,1,fp);
+	fclose(fp);
+
+	show_frame(false);
+
+	BITMAPFILEHEADER *bfh = (BITMAPFILEHEADER *)splash_bitmap_.get();
+	BITMAPINFO *bmi = (BITMAPINFO *)(bfh+1);
+	int width  = bmi->bmiHeader.biWidth;
+	int height = bmi->bmiHeader.biHeight;
+	int left   = (GetDeviceCaps(GetDC(NULL), HORZRES) - width)  / 2;
+	int top    = (GetDeviceCaps(GetDC(NULL), VERTRES) - height) / 2;
+
+	::SetWindowPos(*this,HWND_TOPMOST,left,top,width,height,SWP_SHOWWINDOW);
+	::InvalidateRect(*this,NULL,FALSE);
 }
 
 // void window::v8_process_event(std::string event)
@@ -668,9 +732,9 @@ void window::set_window_rect(uint32_t l, uint32_t t, uint32_t w, uint32_t h)
 void window::set_topmost(bool topmost)
 {
 	if(topmost)
-		SetWindowPos(*this, HWND_TOP, 0,0,0,0, SWP_NOMOVE | SWP_NOREPOSITION);
+		SetWindowPos(*this, HWND_TOP, 0,0,0,0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOREPOSITION);
 	else
-		SetWindowPos(*this, NULL, 0,0,0,0, SWP_NOMOVE | SWP_NOREPOSITION);
+		SetWindowPos(*this, NULL, 0,0,0,0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOREPOSITION);
 }
 
 v8::Handle<v8::Value> window::get_window_rect( v8::Arguments const& )

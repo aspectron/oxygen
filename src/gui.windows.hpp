@@ -96,6 +96,7 @@ namespace aspect
 				{
 					uint32_t width, height, bpp, style;
 					std::string caption;
+					std::string splash;
 				} creation_args;
 
 				void test_function_binding(void) { printf("TEST FUNCTION BINDING INVOKED!\n"); }
@@ -176,6 +177,9 @@ namespace aspect
 				void load_icon_from_file_impl(std::string const&);
 				void drag_accept_files_enable_impl(void);
 				void drag_accept_files(boost::shared_ptr<std::vector<std::string>> files);
+
+				void use_as_splash_screen(std::string filename);
+
 			private:
 
 				volatile HWND hwnd_;
@@ -199,6 +203,8 @@ namespace aspect
 				bool	message_handling_enabled_;	// user has installed message handler
 
 				bool	drag_accept_files_enabled_;
+
+				boost::scoped_ptr<uint8_t> splash_bitmap_;
 		};
 
 		class OXYGEN_API windows_thread
