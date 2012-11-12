@@ -581,8 +581,15 @@ void window::process_event( UINT message, WPARAM wparam, LPARAM lparam )
 
 void window::use_as_splash_screen(std::string filename)
 {
+	char buffer[1024];
+	GetModuleFileNameA(NULL,buffer,sizeof(buffer));
+	char *ptr = strrchr(buffer,'\\');
+	if(!ptr)
+		return;
+	ptr++;
+	strcpy(ptr,filename.c_str());
 
-	FILE *fp = fopen(filename.c_str(), "rb");
+	FILE *fp = fopen(buffer, "rb");
 	if(!fp)
 		return;
 	fseek(fp,0,SEEK_END);
