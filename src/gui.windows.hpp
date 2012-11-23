@@ -183,6 +183,7 @@ namespace aspect
 			private:
 
 				volatile HWND hwnd_;
+				volatile HWND window_created_;
 				HCURSOR cursor_;
 				bool	fullscreen_;
 				unsigned long style_;

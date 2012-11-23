@@ -234,6 +234,7 @@ boost::shared_ptr<window> window::shared_from_this()
 
 window::window(const creation_args *args)
 :	hwnd_(NULL),
+	window_created_(NULL),
 	style_(0),
 	fullscreen_(false),
 	message_handling_enabled_(false),
@@ -243,7 +244,7 @@ window::window(const creation_args *args)
 
 	// TODO - WHAT IF CREATE WINDOW WILL FAIL?  IT WILL RESULT IN hwnd_ BEING NULL AND A DEADLOCK!
 
-	while(aspect::utils::atomic_is_null(hwnd_))
+	while(aspect::utils::atomic_is_null(window_created_)) //hwnd_))
 	{
 //		printf("waiting...\n");
 //		boost::this_thread::yield();
@@ -333,6 +334,8 @@ void window::create_window_impl( const creation_args *args) //video_mode mode, c
 		use_as_splash_screen(args->splash);
 		ShowWindow(*this,SW_SHOW);
 	}
+
+	window_created_ = hwnd_;
 }
 
 window::~window()
@@ -581,15 +584,10 @@ void window::process_event( UINT message, WPARAM wparam, LPARAM lparam )
 
 void window::use_as_splash_screen(std::string filename)
 {
-	char buffer[1024];
-	GetModuleFileNameA(NULL,buffer,sizeof(buffer));
-	char *ptr = strrchr(buffer,'\\');
-	if(!ptr)
+	if(!filename.length())
 		return;
-	ptr++;
-	strcpy(ptr,filename.c_str());
 
-	FILE *fp = fopen(buffer, "rb");
+	FILE *fp = fopen(filename.c_str(), "rb");
 	if(!fp)
 		return;
 	fseek(fp,0,SEEK_END);
