@@ -17,6 +17,43 @@ namespace aspect
 {
 	namespace gui 
 	{
+		class OXYGEN_API windows_thread
+		{
+			public:
+
+				void hello_world(void) { aspect::trace("hello oxygen!"); }
+
+				windows_thread();
+				virtual ~windows_thread();
+
+				static windows_thread *global() { return global_; }
+
+				/// Callback function to schedule in Berkelium
+				typedef boost::function<void ()> callback;
+
+				/// Schedule function call in the windows thread
+				static bool schedule(callback cb);
+
+				// Check that caller in the windows thread
+				static bool is_window_thread()
+				{
+					return boost::this_thread::get_id() == global_->thread_.get_id();
+				}
+
+				void main();
+				boost::thread thread_;
+
+				class main_loop;
+				boost::scoped_ptr<main_loop> main_loop_;
+
+				boost::scoped_ptr<async_queue> task_queue_;
+
+
+			private:
+
+				static windows_thread *global_;
+
+		};
 
 		class OXYGEN_API window : public shared_ptr_object<window>//, public event_handler<uint32_t> // public boost::enable_shared_from_this<window>//, public window_base
 		{
@@ -208,45 +245,10 @@ namespace aspect
 				bool	drag_accept_files_enabled_;
 
 				boost::scoped_ptr<uint8_t> splash_bitmap_;
+
+				boost::shared_ptr<windows_thread>	window_thread_;
 		};
 
-		class OXYGEN_API windows_thread
-		{
-			public:
-
-				void hello_world(void) { aspect::trace("hello oxygen!"); }
-
-				windows_thread();
-				virtual ~windows_thread();
-
-				static windows_thread *global() { return global_; }
-
-				/// Callback function to schedule in Berkelium
-				typedef boost::function<void ()> callback;
-
-				/// Schedule function call in the windows thread
-				static bool schedule(callback cb);
-
-				// Check that caller in the windows thread
-				static bool is_berkelium_thread()
-				{
-					return boost::this_thread::get_id() == global_->thread_.get_id();
-				}
-
-				void main();
-				boost::thread thread_;
-
-				class main_loop;
-				boost::scoped_ptr<main_loop> main_loop_;
-
-				boost::scoped_ptr<async_queue> task_queue_;
-
-
-			private:
-
-				static windows_thread *global_;
-
-		};
 
 		void OXYGEN_API init(HINSTANCE hInstance);
 		void OXYGEN_API cleanup(void);

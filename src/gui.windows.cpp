@@ -114,7 +114,7 @@ public:
 
 	void run()
 	{
-//		aspect::utils::set_thread_name("oxygen");
+		aspect::utils::set_thread_name("oxygen");
 
 		while ( !is_terminating_ )
 		{
@@ -240,6 +240,8 @@ window::window(const creation_args *args)
 	message_handling_enabled_(false),
 	drag_accept_files_enabled_(false)
 {
+	window_thread_ = gs_windows_thread;
+
 	windows_thread::schedule(boost::bind(&window::create_window_impl, this, args));
 
 	// TODO - WHAT IF CREATE WINDOW WILL FAIL?  IT WILL RESULT IN hwnd_ BEING NULL AND A DEADLOCK!
@@ -347,6 +349,8 @@ window::~window()
 		while(aspect::utils::atomic_is_not_null(hwnd_))
 			boost::this_thread::yield();
 	}
+
+	window_thread_.reset();
 }
 
 void window::destroy_window()
