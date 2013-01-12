@@ -293,7 +293,7 @@ void window::create_window_impl( const creation_args *args) //video_mode mode, c
 	hwnd_ = CreateWindowW(L"jsx", wcs_caption, style, left, top, width, height, NULL, NULL, GetModuleHandle(NULL), this);
 #else
 
-	DWORD style =  WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN; // | WS_VISIBLE;
+	DWORD style =  args->frame ? (WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN) : (WS_POPUP | WS_CLIPCHILDREN); // | WS_VISIBLE;
 
 	if(!args->splash.length())
 		style |= WS_VISIBLE;
@@ -318,10 +318,11 @@ void window::create_window_impl( const creation_args *args) //video_mode mode, c
 */
 	// Get the actual size of the window, which can be smaller even after the call to AdjustWindowRect
 	// This happens when the window is bigger than the desktop
+	update_window_size();
 	RECT client_rect;
-	GetClientRect(*this, &client_rect);
-	width_  = client_rect.right - client_rect.left;
-	height_ = client_rect.bottom - client_rect.top;
+//	GetClientRect(*this, &client_rect);
+//	width_  = client_rect.right - client_rect.left;
+//	height_ = client_rect.bottom - client_rect.top;
 
 	HDC hdc = GetDC(hwnd_);
 	HBRUSH hBrush = CreateSolidBrush(0);
@@ -370,6 +371,14 @@ void window::destroy_window_impl( void )
 
 }
 
+void window::update_window_size(void)
+{
+	RECT client_rect;
+	GetClientRect(*this, &client_rect);
+	width_  = client_rect.right - client_rect.left;
+	height_ = client_rect.bottom - client_rect.top;
+}
+
 void window::show_mouse_cursor( bool show )
 {
 	if(show)
@@ -416,10 +425,7 @@ void window::process_event( UINT message, WPARAM wparam, LPARAM lparam )
 	{
 		case WM_SIZE:
 		{
-			RECT rect;
-			GetClientRect(*this, &rect);
-			width_ = rect.right - rect.left;
-			height_ = rect.bottom - rect.top;
+			update_window_size();
 
 		} break;
 
@@ -692,6 +698,8 @@ void window::switch_to_fullscreen( const video_mode& mode )
 	SetWindowLong(*this, GWL_STYLE, style | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 
 	fullscreen_ = true;
+
+	update_window_size();
 }
 
 /*
@@ -727,11 +735,14 @@ void window::show_frame(bool show)
 //		SetWindowLong(*this, GWL_EXSTYLE, WS_EX_APPWINDOW);
 //		SetWindowPos(*this, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOREPOSITION);
 	}
+
+	update_window_size();
 }
 
 void window::set_window_rect(uint32_t l, uint32_t t, uint32_t w, uint32_t h)
 {
 	SetWindowPos(*this, NULL, l, t, w, h, SWP_SHOWWINDOW);
+	update_window_size();
 }
 
 void window::set_topmost(bool topmost)

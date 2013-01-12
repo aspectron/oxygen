@@ -100,6 +100,12 @@ aspect::gui::window* WeakJSClassCreatorOps<aspect::gui::window>::Ctor( v8::Argum
 	if(splash->IsString())
 		ca.splash = convert::JSToStdString(splash);
 
+	Handle<Value> frame = o->Get(String::New("frame"));
+	if(!frame.IsEmpty())
+		ca.frame = convert::JSToBool(frame);
+	else
+		ca.frame = true;
+
 //	boost::shared_ptr<window> ptr(new aspect::gui::window(&ca));
 //	ptr->self_ = ptr;
 //	return ptr.get();

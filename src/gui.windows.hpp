@@ -96,6 +96,7 @@ namespace aspect
 				{
 					uint32_t width, height, bpp, style;
 					std::string caption;
+					bool frame;
 					std::string splash;
 				} creation_args;
 
@@ -122,6 +123,7 @@ namespace aspect
 				void process_event(UINT message, WPARAM wparam, LPARAM lparam);
 				void show(bool visible);
 				void switch_to_fullscreen(const video_mode& mode);
+				void update_window_size(void);
 
 // 				  void set_position(int left, int top)
 // 				  {
