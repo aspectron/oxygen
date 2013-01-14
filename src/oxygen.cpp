@@ -101,7 +101,7 @@ aspect::gui::window* WeakJSClassCreatorOps<aspect::gui::window>::Ctor( v8::Argum
 		ca.splash = convert::JSToStdString(splash);
 
 	Handle<Value> frame = o->Get(String::New("frame"));
-	if(!frame.IsEmpty())
+	if(!frame->IsUndefined())
 		ca.frame = convert::JSToBool(frame);
 	else
 		ca.frame = true;
