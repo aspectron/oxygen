@@ -129,18 +129,6 @@ namespace aspect
 
 				};
 
-				typedef struct _creation_args
-				{
-					uint32_t width, height, bpp, style;
-					std::string caption;
-					bool frame;
-					std::string splash;
-				} creation_args;
-
-				void test_function_binding(void) { printf("TEST FUNCTION BINDING INVOKED!\n"); }
-
-				// boostshared_ptr<window> get_shared_ptr() { return shared_from_this(); }
-
 				operator HWND () const { return hwnd_; }
 				static window *pwnd_from_hwnd(HWND hwnd)
 				{

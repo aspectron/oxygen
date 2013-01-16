@@ -7,7 +7,7 @@
 
 #if OS(LINUX)
 
-#include <GL/glxew.h>
+// #include <GL/glxew.h>
 
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
@@ -23,54 +23,75 @@
 
 namespace aspect
 {
-	namespace xf86gui 
+	namespace gui
 	{
+
+
+
+
 		extern Display		*g_display;
 		extern int			g_screen;
 		extern XIM			g_input_method;
 
-
-		void init(void);
-		void cleanup(void);
+		void OXYGEN_API init(void);
+		void OXYGEN_API cleanup(void);
 		Bool check_event(::Display*, XEvent* event, XPointer user_data);
 
-
-		class window : public aspect::gui::window
+		class OXYGEN_API window : public shared_ptr_object<window>
 		{
 			private:
 
-				::Window m_window;
-				::Atom	 m_atom_close;
-				int		 m_previous_video_mode;
-				::Cursor	 m_hidden_cursor;
-				::XIC		 m_input_context;
-				XVisualInfo	m_current_visual;
+				::Window window_;
+				::Atom	 atom_close_;
+				int		 previous_video_mode_;
+				::Cursor	 hidden_cursor_;
+				::XIC		 input_context_;
+				XVisualInfo	current_visual_;
 
-				bool	m_fullscreen;
+				bool	fullscreen_;
 
-				unsigned long m_style;
+				unsigned long style_;
 
 				static unsigned long ms_event_mask;
 
 //				bool m_terminate;
 
+				uint32_t width_;
+				uint32_t height_;
+				volatile bool terminating_;
+
 			public:
 
-				XVisualInfo &get_current_visual(void) { return m_current_visual; }
+				V8_DECLARE_CLASS_BINDER(window);
 
-				window(video_mode mode, const std::string& caption, unsigned long requested_style)
-					: m_window(0),
-					m_atom_close(0),
-					m_previous_video_mode(-1),
-					m_hidden_cursor(0),
-					m_input_context(NULL),
-					m_fullscreen(false),
-					m_style(requested_style)
-//					m_terminate(false)
+				XVisualInfo &get_current_visual(void) { return current_visual_; }
+
+void test_function_binding(void) { printf("Hello World!"); }
+
+				window(const creation_args *)
+				:	window_(0),
+					atom_close_(0),
+					previous_video_mode_(-1),
+					hidden_cursor_(0),
+					input_context_(NULL),
+					fullscreen_(false),
+					style_(0),
+					terminating_(false)
+				{
+
+				}
+
+				virtual ~window()
+				{
+					destroy_window();
+				}
+
+				void create_window(video_mode mode, const std::string& caption, unsigned long requested_style)
 				{
 					// Compute position and size
 					int left, top;
-					bool fullscreen = (m_style & AWS_FULLSCREEN) != 0;
+					bool fullscreen = false; // (style_ & AWS_FULLSCREEN) != 0;
+					// bool fullscreen = (style_ & AWS_FULLSCREEN) != 0;
 					if (!fullscreen)
 					{
 						left = (DisplayWidth(g_display, g_screen)  - mode.width)  / 2;
@@ -81,8 +102,8 @@ namespace aspect
 						left = 0;
 						top  = 0;
 					}
-					int width  = m_width  = mode.width;
-					int height = m_height = mode.height;
+					int width  = width_  = mode.width;
+					int height = height_ = mode.height;
 
 					// Switch to fullscreen if necessary
 					if (fullscreen)
@@ -90,12 +111,14 @@ namespace aspect
 
 					// Create the rendering context
 					//XVisualInfo visual;
+#if 0 // -----------------------------------------------------
 					gui::graphics_settings settings;
-					if (!create_context(mode, m_current_visual, settings))
+					if (!create_context(mode, current_visual_, settings))
 						return;
+#endif // ----------------------------------------------------
 
 					// Create a new color map with the chosen visual
-					Colormap ColMap = XCreateColormap(g_display, RootWindow(g_display, g_screen), m_current_visual.visual, AllocNone);
+					Colormap ColMap = XCreateColormap(g_display, RootWindow(g_display, g_screen), current_visual_.visual, AllocNone);
 
 					// Define the window attributes
 					XSetWindowAttributes Attributes;
@@ -104,23 +127,23 @@ namespace aspect
 					Attributes.override_redirect = fullscreen;
 
 					// Create the window
-					m_window = XCreateWindow(g_display,
+					window_ = XCreateWindow(g_display,
 						RootWindow(g_display, g_screen),
 						left, top,
 						width, height,
 						0,
-						m_current_visual.depth,
+						current_visual_.depth,
 						InputOutput,
-						m_current_visual.visual,
+						current_visual_.visual,
 						CWEventMask | CWColormap | CWOverrideRedirect, &Attributes);
-					if (!m_window)
+					if (!window_)
 					{
 						std::cerr << "Failed to create window" << std::endl;
 						return;
 					}
 
 					// Set the window's name
-					XStoreName(g_display, m_window, caption.c_str());
+					XStoreName(g_display, window_, caption.c_str());
 
 					// Set the window's style (tell the windows manager to change our window's decorations and functions according to the requested style)
 					if (!fullscreen)
@@ -160,35 +183,37 @@ namespace aspect
 							Hints.Decorations = 0;
 							Hints.Functions   = 0;
 
-							if (m_style & AWS_TITLEBAR)
+							//if (style_ & AWS_TITLEBAR)
 							{
 								Hints.Decorations |= MWM_DECOR_BORDER | MWM_DECOR_TITLE | MWM_DECOR_MINIMIZE | MWM_DECOR_MENU;
 								Hints.Functions   |= MWM_FUNC_MOVE | MWM_FUNC_MINIMIZE;
 							}
-							if (m_style & AWS_RESIZE)
+							//if (style_ & AWS_RESIZE)
 							{
 								Hints.Decorations |= MWM_DECOR_MAXIMIZE | MWM_DECOR_RESIZEH;
 								Hints.Functions   |= MWM_FUNC_MAXIMIZE | MWM_FUNC_RESIZE;
 							}
-							if (m_style & AWS_CLOSE)
+							//if (style_ & AWS_CLOSE)
 							{
 								Hints.Decorations |= 0;
 								Hints.Functions   |= MWM_FUNC_CLOSE;
 							}
 
 							const unsigned char* HintsPtr = reinterpret_cast<const unsigned char*>(&Hints);
-							XChangeProperty(g_display, m_window, WMHintsAtom, WMHintsAtom, 32, PropModeReplace, HintsPtr, 5);
+							XChangeProperty(g_display, window_, WMHintsAtom, WMHintsAtom, 32, PropModeReplace, HintsPtr, 5);
 						}
 
 						// This is a hack to force some windows managers to disable resizing
-						if (!(m_style & AWS_RESIZE))
+#if 0 // TODO!
+						if (!(style_ & AWS_RESIZE))
 						{
 							XSizeHints XSizeHints;
 							XSizeHints.flags      = PMinSize | PMaxSize;
 							XSizeHints.min_width  = XSizeHints.max_width  = width;
 							XSizeHints.min_height = XSizeHints.max_height = height;
-							XSetWMNormalHints(g_display, m_window, &XSizeHints); 
+							XSetWMNormalHints(g_display, window_, &XSizeHints); 
 						}
+#endif
 					}
 
 					// Do some common initializations
@@ -197,32 +222,34 @@ namespace aspect
 					// In fullscreen mode, we must grab keyboard and mouse inputs
 					if (fullscreen)
 					{
-						XGrabPointer(g_display, m_window, true, 0, GrabModeAsync, GrabModeAsync, m_window, None, CurrentTime);
-						XGrabKeyboard(g_display, m_window, true, GrabModeAsync, GrabModeAsync, CurrentTime);
+						XGrabPointer(g_display, window_, true, 0, GrabModeAsync, GrabModeAsync, window_, None, CurrentTime);
+						XGrabKeyboard(g_display, window_, true, GrabModeAsync, GrabModeAsync, CurrentTime);
 					}
 				}
 
-				virtual ~window()
+				void destroy_window(void)
 				{
 					// Cleanup graphical resources
 					cleanup();
 
 					// Destroy the input context
-					if (m_input_context)
+					if (input_context_)
 					{
-						XDestroyIC(m_input_context);
+						XDestroyIC(input_context_);
+						input_context_ = NULL;
 					}
 
 					// Destroy the window
-					if (m_window)
+					if (window_)
 					{
-						XDestroyWindow(g_display, m_window);
+						XDestroyWindow(g_display, window_);
 						XFlush(g_display);
+						window_ = 0;
 					}
 
 				}
 
-				::Window &get_window(void) { return m_window; }
+				::Window &get_window(void) { return window_; }
 
 				void _init(void)
 				{
@@ -230,24 +257,24 @@ namespace aspect
 //					myLastKeyReleaseEvent.type = -1;
 
 					// Get the atom defining the close event
-					m_atom_close = XInternAtom(g_display, "WM_DELETE_WINDOW", false);
-					XSetWMProtocols(g_display, m_window, &m_atom_close, 1);
+					atom_close_ = XInternAtom(g_display, "WM_DELETE_WINDOW", false);
+					XSetWMProtocols(g_display, window_, &atom_close_, 1);
 
 					// Create the input context
 					if (g_input_method)
 					{
-						m_input_context = XCreateIC(g_input_method,
-							XNClientWindow,  m_window,
-							XNFocusWindow,   m_window,
+						input_context_ = XCreateIC(g_input_method,
+							XNClientWindow,  window_,
+							XNFocusWindow,   window_,
 							XNInputStyle,    XIMPreeditNothing  | XIMStatusNothing,
 							NULL);
 
-						if (!m_input_context)
+						if (!input_context_)
 							std::cerr << "Failed to create input context for window -- TextEntered event won't be able to return unicode" << std::endl;
 					}
 
 					// Show the window
-					XMapWindow(g_display, m_window);
+					XMapWindow(g_display, window_);
 					XFlush(g_display);
 
 					// Create the hiden cursor
@@ -263,7 +290,7 @@ namespace aspect
 				void create_hidden_cursor(void)
 				{
 					// Create the cursor's pixmap (1x1 pixels)
-					Pixmap CursorPixmap = XCreatePixmap(g_display, m_window, 1, 1, 1);
+					Pixmap CursorPixmap = XCreatePixmap(g_display, window_, 1, 1, 1);
 					GC GraphicsContext = XCreateGC(g_display, CursorPixmap, 0, NULL);
 					XDrawPoint(g_display, CursorPixmap, GraphicsContext, 0, 0);
 					XFreeGC(g_display, GraphicsContext);
@@ -272,7 +299,7 @@ namespace aspect
 					XColor Color;
 					Color.flags = DoRed | DoGreen | DoBlue;
 					Color.red = Color.blue = Color.green = 0;
-					m_hidden_cursor = XCreatePixmapCursor(g_display, CursorPixmap, CursorPixmap, &Color, &Color, 0, 0);
+					hidden_cursor_ = XCreatePixmapCursor(g_display, CursorPixmap, CursorPixmap, &Color, &Color, 0, 0);
 
 					// We don't need the pixmap any longer, free it
 					XFreePixmap(g_display, CursorPixmap);
@@ -282,7 +309,7 @@ namespace aspect
 				void cleanup()
 				{
 					// Restore the previous video mode (in case we were running in fullscreen)
-					if (m_fullscreen)
+					if (fullscreen_)
 					{
 						// Get current screen info
 						XRRScreenConfiguration* Config = XRRGetScreenInfo(g_display, RootWindow(g_display, g_screen));
@@ -293,14 +320,14 @@ namespace aspect
 							XRRConfigCurrentConfiguration(Config, &current_rotation);
 
 							// Reset the video mode
-							XRRSetScreenConfig(g_display, Config, RootWindow(g_display, g_screen), m_previous_video_mode, current_rotation, CurrentTime);
+							XRRSetScreenConfig(g_display, Config, RootWindow(g_display, g_screen), previous_video_mode_, current_rotation, CurrentTime);
 
 							// Free the configuration instance
 							XRRFreeScreenConfigInfo(Config);
 						} 
 
 						// Reset the fullscreen window
-						m_fullscreen = false;
+						fullscreen_ = false;
 					}
 
 					// Unhide the mouse cursor (in case it was hidden)
@@ -314,6 +341,7 @@ namespace aspect
 // 					}
 				}
 
+#if 0 // ---------------------------------------------------------------
 				int _evaluate_config(const video_mode& mode, const gui::graphics_settings& settings, int color_bits, int depth_bits, int stencil_bits, int antialiasing_level)
 				{
 					return abs(static_cast<int>(mode.bpp  - color_bits))   +
@@ -321,7 +349,9 @@ namespace aspect
 						abs(static_cast<int>(settings.stencil_bits - stencil_bits)) +
 						abs(static_cast<int>(settings.antialiasing_level - antialiasing_level));
 				}
+#endif // ---------------------------------------------------------------
 
+#if 0 // -----------------------------------------------------------
 				bool create_context(const video_mode& mode, XVisualInfo& ChosenVisual, gui::graphics_settings &settings, XVisualInfo Template = XVisualInfo(), unsigned long mask = 0)
 				{
 					// Get all the visuals matching the template
@@ -413,7 +443,7 @@ namespace aspect
 
 					// Assign the chosen visual, and free the temporary visuals array
 					ChosenVisual = *best_visual;
-					// m_current_visual =*best_visual;
+					// current_visual_ =*best_visual;
 					XFree(Visuals);
 #if 0
 					// Activate the context
@@ -425,6 +455,7 @@ namespace aspect
 #endif
 					return true;
 				}
+#endif // -------------------------------------------------------------
 
 /*
 				bool create_pbuffer(XVisualInfo *visual_info)
@@ -486,8 +517,8 @@ namespace aspect
 								// The window is about to be destroyed : we must cleanup resources
 								cleanup();
 
-								//m_terminate = true;
-								set_terminating();
+								terminating_ = true;
+								//set_terminating();
 
 								break;
 							}
@@ -496,8 +527,8 @@ namespace aspect
 						case FocusIn :
 							{
 								// Update the input context
-								if (m_input_context)
-									XSetICFocus(m_input_context);
+								if (input_context_)
+									XSetICFocus(input_context_);
 
 // 								Event Evt;
 // 								Evt.Type = Event::GainedFocus;
@@ -509,8 +540,8 @@ namespace aspect
 						case FocusOut :
 							{
 								// Update the input context
-								if (m_input_context)
-									XUnsetICFocus(m_input_context);
+								if (input_context_)
+									XUnsetICFocus(input_context_);
 
 // 								Event Evt;
 // 								Evt.Type = Event::LostFocus;
@@ -521,15 +552,15 @@ namespace aspect
 							// Resize event
 						case ConfigureNotify :
 							{
-								if ((WinEvent.xconfigure.width != static_cast<int>(m_width)) || (WinEvent.xconfigure.height != static_cast<int>(m_height)))
+								if ((WinEvent.xconfigure.width != static_cast<int>(width_)) || (WinEvent.xconfigure.height != static_cast<int>(height_)))
 								{
-									m_width  = WinEvent.xconfigure.width;
-									m_height = WinEvent.xconfigure.height;
+									width_  = WinEvent.xconfigure.width;
+									height_ = WinEvent.xconfigure.height;
 
 // 									Event Evt;
 // 									Evt.Type        = Event::Resized;
-// 									Evt.Size.Width  = m_width;
-// 									Evt.Size.Height = m_height;
+// 									Evt.Size.Width  = width_;
+// 									Evt.Size.Height = height_;
 // 									SendEvent(Evt);
 								}
 								break;
@@ -538,14 +569,14 @@ namespace aspect
 							// Close event
 						case ClientMessage :
 							{
-								if ((WinEvent.xclient.format == 32) && (WinEvent.xclient.data.l[0]) == static_cast<long>(m_atom_close))  
+								if ((WinEvent.xclient.format == 32) && (WinEvent.xclient.data.l[0]) == static_cast<long>(atom_close_))  
 								{
 
 printf("close_event!\n");
 
 //m_terminate = true;
-set_terminating();
-
+//set_terminating();
+terminating_ = true;
 // 									Event Evt;
 // 									Evt.Type = Event::Closed;
 // 									SendEvent(Evt);
@@ -576,11 +607,11 @@ set_terminating();
 								if (!XFilterEvent(&WinEvent, None))
 								{
 	#ifdef X_HAVE_UTF8_STRING
-									if (m_input_context)
+									if (input_context_)
 									{
 										Status ReturnedStatus;
 										Uint8  KeyBuffer[16];
-										int Length = Xutf8LookupString(m_input_context, &WinEvent.xkey, reinterpret_cast<char*>(KeyBuffer), sizeof(KeyBuffer), NULL, &ReturnedStatus);
+										int Length = Xutf8LookupString(input_context_, &WinEvent.xkey, reinterpret_cast<char*>(KeyBuffer), sizeof(KeyBuffer), NULL, &ReturnedStatus);
 										if (Length > 0)
 										{
 											Uint32 Unicode[2]; // just in case, but 1 character should be enough
@@ -721,7 +752,7 @@ set_terminating();
 
 				void show_mouse_cursor(bool show)
 				{
-					XDefineCursor(g_display, m_window, show ? None : m_hidden_cursor);
+					XDefineCursor(g_display, window_, show ? None : hidden_cursor_);
 					XFlush(g_display);
 
 				}
@@ -732,8 +763,8 @@ set_terminating();
 
 					// Process any event in the queue matching our window
 					XEvent Event;
-//					while (!m_terminate && XIfEvent(g_display, &Event, &check_event, reinterpret_cast<XPointer>(m_window)))
-					while (XCheckIfEvent(g_display, &Event, &check_event, reinterpret_cast<XPointer>(m_window)))
+//					while (!m_terminate && XIfEvent(g_display, &Event, &check_event, reinterpret_cast<XPointer>(window_)))
+					while (XCheckIfEvent(g_display, &Event, &check_event, reinterpret_cast<XPointer>(window_)))
 					{
 						//printf("got event\n");
 
@@ -775,8 +806,8 @@ set_terminating();
 
 					// Process any event in the queue matching our window
 					XEvent Event;
-					while (!is_terminating() && !XIfEvent(g_display, &Event, &check_event, reinterpret_cast<XPointer>(m_window)))
-						//						while (XCheckIfEvent(g_display, &Event, &CheckEvent, reinterpret_cast<XPointer>(m_window)))
+					while (!terminating_ && !XIfEvent(g_display, &Event, &check_event, reinterpret_cast<XPointer>(window_)))
+						//						while (XCheckIfEvent(g_display, &Event, &CheckEvent, reinterpret_cast<XPointer>(window_)))
 					{
 
 						//printf("got event\n");
@@ -816,9 +847,9 @@ set_terminating();
 				void show(bool visible)
 				{
 					if (visible)
-						XMapWindow(g_display, m_window);
+						XMapWindow(g_display, window_);
 					else
-						XUnmapWindow(g_display, m_window);
+						XUnmapWindow(g_display, window_);
 
 					XFlush(g_display);
 
@@ -836,7 +867,7 @@ set_terminating();
 						{
 							// Get the current rotation
 							Rotation current_rotation;
-							m_previous_video_mode = XRRConfigCurrentConfiguration(Config, &current_rotation);
+							previous_video_mode_ = XRRConfigCurrentConfiguration(Config, &current_rotation);
 
 							// Get the available screen sizes
 							int NbSizes;
@@ -852,7 +883,7 @@ set_terminating();
 										XRRSetScreenConfig(g_display, Config, RootWindow(g_display, g_screen), i, current_rotation, CurrentTime);
 
 										// Set "this" as the current fullscreen window
-										m_fullscreen = true;
+										fullscreen_ = true;
 										break;
 									}
 								}
@@ -875,11 +906,32 @@ set_terminating();
 
 				}
 
+				v8::Handle<v8::Value> on(std::string const& name, v8::Handle<v8::Value> fn);
+				v8::Handle<v8::Value> off(std::string const& name);
+
+				void show_frame(bool show) { }
+				void set_topmost(bool topmost) { }
+
+				void set_window_rect(uint32_t l, uint32_t t, uint32_t w, uint32_t h) { }
+				v8::Handle<v8::Value> get_window_rect(v8::Arguments const&) { }
+				v8::Handle<v8::Value> get_client_rect(v8::Arguments const&) { }
+
+				void load_icon_from_file(std::string const&) { }
+				void load_icon_from_file_impl(std::string const&) { }
+				void drag_accept_files_enable_impl(void) { }
+				void drag_accept_files(boost::shared_ptr<std::vector<std::string>> files) { }
+
+				void use_as_splash_screen(std::string filename) { }
+
 
 		};
 
 	}
 }
+
+#define WEAK_CLASS_TYPE aspect::gui::window
+#define WEAK_CLASS_NAME window
+#include <v8/juice/WeakJSClassCreator-Decl.h>
 
 #endif // OS(LINUX)
 

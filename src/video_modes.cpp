@@ -4,8 +4,8 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrandr.h>
 
-#include "window_base.hpp"
-#include "window_xf86.hpp"
+//#include "window_base.hpp"
+//#include "window_xf86.hpp"
 #endif
 
 namespace aspect
@@ -111,10 +111,10 @@ void init_supported_video_modes(std::vector<video_mode>& modes)
     // First, clear array to fill
     modes.clear();
 
-	_aspect_assert(aspect::xf86gui::g_display);
+	_aspect_assert(aspect::gui::g_display);
 
-	Display *Disp   = aspect::xf86gui::g_display;
-	int      Screen = aspect::xf86gui::g_screen; 
+	Display *Disp   = aspect::gui::g_display;
+	int      Screen = aspect::gui::g_screen; 
 
     // Check if the XRandR extension is present
     int Version;
@@ -180,10 +180,10 @@ video_mode get_current_video_mode(void)
 //     int      Screen = WindowImplX11::ourScreen;
 
 
-	_aspect_assert(aspect::xf86gui::g_display);
+	_aspect_assert(aspect::gui::g_display);
 
-	Display* Disp   = aspect::xf86gui::g_display;
-	int      Screen = aspect::xf86gui::g_screen; 
+	Display* Disp   = aspect::gui::g_display;
+	int      Screen = aspect::gui::g_screen; 
 
 
     // Check if the XRandR extension is present

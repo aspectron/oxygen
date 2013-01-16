@@ -1,8 +1,8 @@
-#include "aspect.hpp"
+#include "oxygen.hpp"
 
-#include "video_modes.hpp"
-#include "gui.window.hpp"
-#include "gui.xf86.hpp"
+//#include "video_modes.hpp"
+//#include "gui.window.hpp"
+//#include "gui.xf86.hpp"
 
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
@@ -10,7 +10,7 @@
 
 namespace aspect
 {
-namespace xf86gui 
+namespace gui 
 {
 
 Display		*g_display = NULL;
@@ -19,7 +19,6 @@ XIM			g_input_method = NULL;
 unsigned long  window::ms_event_mask  = FocusChangeMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask |
 										PointerMotionMask | KeyPressMask | KeyReleaseMask | StructureNotifyMask |
 										EnterWindowMask | LeaveWindowMask;
-
 
 void init(void)
 {
@@ -55,6 +54,15 @@ Bool check_event(::Display*, XEvent* event, XPointer user_data)
 }
 
 
-}
+v8::Handle<v8::Value> window::on(std::string const& name, v8::Handle<v8::Value> fn)
+{
+
 }
 
+v8::Handle<v8::Value> window::off(std::string const& name)
+{
+	
+}
+
+
+} } // aspect::gui

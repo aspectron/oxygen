@@ -13,8 +13,12 @@ Handle<Value> get_screen_size(Arguments const&)
 
 	Handle<Object> o = Object::New();
 
+#if OS(WINDOWS)
 	o->Set(String::New("width"), convert::UInt32ToJS(GetSystemMetrics(SM_CXSCREEN)));
 	o->Set(String::New("height"), convert::UInt32ToJS(GetSystemMetrics(SM_CYSCREEN)));
+#else
+#pragma error "TODO - get_screen_size()!"
+#endif
 
 	return scope.Close(o);
 }
@@ -76,7 +80,7 @@ aspect::gui::window* WeakJSClassCreatorOps<aspect::gui::window>::Ctor( v8::Argum
 	if(!args.Length())
 		throw std::runtime_error("Window constructor requires configuration object as an argument");
 
-	window::creation_args ca;
+	creation_args ca;
 
 	Handle<Object> o = args[0]->ToObject();
 

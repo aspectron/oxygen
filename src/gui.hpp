@@ -1,5 +1,5 @@
-#ifndef __GUI_WINDOW_HPP__
-#define __GUI_WINDOW_HPP__
+#ifndef __GUI_HPP__
+#define __GUI_HPP__
 
 namespace aspect
 {
@@ -17,6 +17,15 @@ namespace aspect
 	namespace gui
 	{
 
+		typedef struct _creation_args
+		{
+			uint32_t width, height, bpp, style;
+			std::string caption;
+			bool frame;
+			std::string splash;
+		} creation_args;
+
+
 /*		struct graphics_settings
 		{
 			explicit graphics_settings(unsigned int depth = 0, unsigned int stencil = 0, unsigned int antialiasing = 0) :
@@ -32,6 +41,7 @@ namespace aspect
 		};
 */
 
+/*
 		class OXYGEN_API window_base
 		{
 			protected:
@@ -70,9 +80,10 @@ namespace aspect
 					*piheight = height_;
 				}
 		};
+		*/
 	}
 }
 
 
 
-#endif // __WINDOW_BASE_HPP__
+#endif // __GUI_HPP__

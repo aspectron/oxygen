@@ -1,4 +1,7 @@
 #include "oxygen.hpp"
+
+#if OS(WINDOWS)
+
 #include "shellapi.h"
 
 using namespace v8;
@@ -844,4 +847,4 @@ void window::drag_accept_files(boost::shared_ptr<std::vector<std::string>> files
 
 } } // namespace aspect::gui
 
-
+#endif // OS(WINDOWS)
