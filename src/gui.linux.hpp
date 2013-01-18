@@ -16,7 +16,7 @@
 #include <sstream>
 #include <vector>
 
-//#include <GL/glx.h>
+#include <GL/glx.h>
 #include <set>
 #include <string>
 
@@ -68,7 +68,21 @@ namespace aspect
 
 void test_function_binding(void) { printf("Hello World!"); }
 
-				window(const creation_args *)
+
+/*
+
+		typedef struct _creation_args
+		{
+			uint32_t width, height, bpp, style;
+			std::string caption;
+			bool frame;
+			std::string splash;
+		} creation_args;
+
+*/
+
+
+				window(const creation_args *args)
 				:	window_(0),
 					atom_close_(0),
 					previous_video_mode_(-1),
@@ -78,7 +92,7 @@ void test_function_binding(void) { printf("Hello World!"); }
 					style_(0),
 					terminating_(false)
 				{
-
+					create_window(args);
 				}
 
 				virtual ~window()
@@ -86,7 +100,7 @@ void test_function_binding(void) { printf("Hello World!"); }
 					destroy_window();
 				}
 
-				void create_window(video_mode mode, const std::string& caption, unsigned long requested_style)
+				void create_window(const creation_args *args) //video_mode mode, const std::string& caption, unsigned long requested_style)
 				{
 					// Compute position and size
 					int left, top;
@@ -94,26 +108,28 @@ void test_function_binding(void) { printf("Hello World!"); }
 					// bool fullscreen = (style_ & AWS_FULLSCREEN) != 0;
 					if (!fullscreen)
 					{
-						left = (DisplayWidth(g_display, g_screen)  - mode.width)  / 2;
-						top  = (DisplayHeight(g_display, g_screen) - mode.height) / 2;
+						left = (DisplayWidth(g_display, g_screen)  - args->width)  / 2;
+						top  = (DisplayHeight(g_display, g_screen) - args->height) / 2;
 					}
 					else
 					{
 						left = 0;
 						top  = 0;
 					}
-					int width  = width_  = mode.width;
-					int height = height_ = mode.height;
+					int width  = width_  = args->width;
+					int height = height_ = args->height;
 
 					// Switch to fullscreen if necessary
+#if 0 // -----------------------------------------------------
 					if (fullscreen)
 						switch_to_fullscreen(mode);
+#endif // ----------------------------------------------------
 
 					// Create the rendering context
 					//XVisualInfo visual;
-#if 0 // -----------------------------------------------------
+#if 1 // -----------------------------------------------------
 					gui::graphics_settings settings;
-					if (!create_context(mode, current_visual_, settings))
+					if (!create_context(args, current_visual_, settings))
 						return;
 #endif // ----------------------------------------------------
 
@@ -143,7 +159,7 @@ void test_function_binding(void) { printf("Hello World!"); }
 					}
 
 					// Set the window's name
-					XStoreName(g_display, window_, caption.c_str());
+					XStoreName(g_display, window_, args->caption.c_str());
 
 					// Set the window's style (tell the windows manager to change our window's decorations and functions according to the requested style)
 					if (!fullscreen)
@@ -251,6 +267,12 @@ void test_function_binding(void) { printf("Hello World!"); }
 
 				::Window &get_window(void) { return window_; }
 
+				void get_size(uint32_t *piwidth, uint32_t *piheight)
+				{
+					*piwidth = width_;
+					*piheight = height_;
+				}				
+
 				void _init(void)
 				{
 					// Make sure the "last key release" is initialized with invalid values
@@ -341,18 +363,18 @@ void test_function_binding(void) { printf("Hello World!"); }
 // 					}
 				}
 
-#if 0 // ---------------------------------------------------------------
-				int _evaluate_config(const video_mode& mode, const gui::graphics_settings& settings, int color_bits, int depth_bits, int stencil_bits, int antialiasing_level)
+#if 1 // ---------------------------------------------------------------
+				int _evaluate_config(const creation_args *args, const gui::graphics_settings& settings, int color_bits, int depth_bits, int stencil_bits, int antialiasing_level)
 				{
-					return abs(static_cast<int>(mode.bpp  - color_bits))   +
+					return abs(static_cast<int>(args->bpp  - color_bits))   +
 						abs(static_cast<int>(settings.depth_bits - depth_bits))   +
 						abs(static_cast<int>(settings.stencil_bits - stencil_bits)) +
 						abs(static_cast<int>(settings.antialiasing_level - antialiasing_level));
 				}
 #endif // ---------------------------------------------------------------
 
-#if 0 // -----------------------------------------------------------
-				bool create_context(const video_mode& mode, XVisualInfo& ChosenVisual, gui::graphics_settings &settings, XVisualInfo Template = XVisualInfo(), unsigned long mask = 0)
+#if 1 // -----------------------------------------------------------
+				bool create_context(const creation_args *args, XVisualInfo& ChosenVisual, gui::graphics_settings &settings, XVisualInfo Template = XVisualInfo(), unsigned long mask = 0)
 				{
 					// Get all the visuals matching the template
 					Template.screen = g_screen;     
@@ -392,7 +414,7 @@ void test_function_binding(void) { printf("Hello World!"); }
 
 							// Evaluate the current configuration
 							int color = _red + _green + _blue + _alpha;
-							int score = _evaluate_config(mode, settings, color, _depth, _stencil, _multisampling ? _samples : 0);
+							int score = _evaluate_config(args, settings, color, _depth, _stencil, _multisampling ? _samples : 0);
 
 							// Keep it if it's better than the current best
 							if (score < best_score)

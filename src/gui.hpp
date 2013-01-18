@@ -19,14 +19,14 @@ namespace aspect
 
 		typedef struct _creation_args
 		{
-			uint32_t width, height, bpp, style;
+			uint32_t left, top, width, height, bpp, style;
 			std::string caption;
 			bool frame;
 			std::string splash;
 		} creation_args;
 
 
-/*		struct graphics_settings
+		struct graphics_settings
 		{
 			explicit graphics_settings(unsigned int depth = 0, unsigned int stencil = 0, unsigned int antialiasing = 0) :
 				depth_bits(depth),
@@ -39,7 +39,7 @@ namespace aspect
 			unsigned int stencil_bits;     
 			unsigned int antialiasing_level;
 		};
-*/
+
 
 /*
 		class OXYGEN_API window_base

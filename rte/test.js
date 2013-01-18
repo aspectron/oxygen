@@ -17,7 +17,7 @@ var window = oxygen.window({
 
 log.info("Window created...");
 
-dpc(5000, function(){
+dpc(25000, function(){
 	log.info("Destroying window...");
 	window.destroy();
 })
