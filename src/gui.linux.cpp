@@ -19,6 +19,7 @@ XIM			g_input_method = NULL;
 unsigned long  window::ms_event_mask  = FocusChangeMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask |
 										PointerMotionMask | KeyPressMask | KeyReleaseMask | StructureNotifyMask |
 										EnterWindowMask | LeaveWindowMask;
+std::vector<boost::shared_ptr<window>> window::window_list_;
 
 void init(void)
 {
@@ -35,10 +36,13 @@ void init(void)
 		std::cerr << "Failed to open a connection with the X server" << std::endl;
 	}
 
+	oxygen_thread::start();
 }
 
 void cleanup(void)
 {
+	oxygen_thread::stop();
+
 	if (g_input_method)
 		XCloseIM(g_input_method);
 
@@ -56,12 +60,14 @@ Bool check_event(::Display*, XEvent* event, XPointer user_data)
 
 v8::Handle<v8::Value> window::on(std::string const& name, v8::Handle<v8::Value> fn)
 {
-
+	window_base::on(name,fn);
+	return convert::CastToJS(this);
 }
 
 v8::Handle<v8::Value> window::off(std::string const& name)
 {
-	
+	window_base::off(name);
+	return convert::CastToJS(this);
 }
 
 

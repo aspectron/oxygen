@@ -9,8 +9,6 @@ using namespace v8::juice;
 
 namespace aspect { namespace gui {
 
-boost::shared_ptr<windows_thread>	gs_windows_thread;
-windows_thread* windows_thread::global_ = NULL;
 HBRUSH gs_hbrush = NULL;
 HINSTANCE gs_hinstance = NULL;
 LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
@@ -43,12 +41,14 @@ void init(HINSTANCE hinstance)
 	RegisterClass(&wc);
 
 	// start windows event processing thread
-	gs_windows_thread.reset(new windows_thread());
+//	gs_oxygen_thread.reset(new oxygen_thread());
+	oxygen_thread::start();
 }
 
 void cleanup(void)
 {
-	gs_windows_thread.reset();
+//	gs_oxygen_thread.reset();
+	oxygen_thread::stop();
 
 	// clean-up (windows specific items)
 	if(gs_hbrush != NULL) DeleteObject(gs_hbrush);
@@ -83,149 +83,6 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpar
 // ------------------------------------------------------	
 
 
-class windows_thread::main_loop : boost::noncopyable
-{
-public:
-	explicit main_loop(boost::posix_time::time_duration& update_interval)
-		: is_terminating_(false)
-		, update_interval_(update_interval)
-	{
-	}
-
-	typedef windows_thread::callback callback;
-
-	/// Schedule callback call in the main loop
-	bool schedule(callback cb)
-	{
-		_aspect_assert(cb);
-		if ( cb && !is_terminating_ )
-		{
-			callbacks_.push(cb);
-			return true;
-		}
-		return false;
-	}
-
-	void terminate()
-	{
-		is_terminating_ = true;
-		callbacks_.push(callback());
-	}
-
-	/// Is the main loop terminating?
-	bool is_terminating() const { return is_terminating_; }
-
-	void run()
-	{
-		aspect::utils::set_thread_name("oxygen");
-
-		while ( !is_terminating_ )
-		{
-			// printf(".");
-
-			boost::posix_time::ptime const start = boost::posix_time::microsec_clock::local_time();
-
-//			Berkelium::update();
-
-			// TODO - MAKE THIS BLOCKING???
-			MSG msg;
-			//					  while (GetMessage(&msg, hwnd_, 0, 0, PM_REMOVE))
-			while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-			{
-				TranslateMessage(&msg);
-				DispatchMessage(&msg);
-			}
-
-
-			execute_callbacks();
-
-			boost::posix_time::ptime const finish = boost::posix_time::microsec_clock::local_time();
-
-			boost::posix_time::time_duration const period = update_interval_ - (finish - start);
-			// THIS HANGS???
-			//boost::this_thread::sleep(period);
-			Sleep(5);
-
-		}
-		callbacks_.clear();
-	}
-
-private:
-	void execute_callbacks()
-	{
-		size_t const MAX_CALLBACKS_HANDLED = 100;
-		callback cb;
-		for (size_t cb_handled = 0; callbacks_.try_pop(cb) && cb_handled < MAX_CALLBACKS_HANDLED; ++cb_handled)
-		{
-			if ( !cb )
-			{
-				break;
-			}
-			try
-			{
-				cb();
-			}
-			catch (...)
-			{
-				///TODO: handle exceptions
-			}
-		}
-	}
-
-	threads::concurrent_queue<callback> callbacks_;
-	bool is_terminating_; //TODO: std::atomic<bool>is_terminating_;
-
-	boost::posix_time::time_duration& update_interval_;
-};
-
-
-windows_thread::windows_thread()
-{
-
-	_aspect_assert(!windows_thread::global_);
-	if ( windows_thread::global_ )
-	{
-		throw new std::runtime_error("Only one instance of windows_thread object is allowed");
-	}
-	windows_thread::global_ = this;
-
-
-//	task_queue_.reset(new async_queue(cfg_.task_thread_count));
-	task_queue_.reset(new async_queue("OXYGEN",1));
-
-
-	boost::posix_time::time_duration interval(boost::posix_time::microseconds(1000000 / 30));
-
-	main_loop_.reset(new main_loop(interval));
-	thread_ = boost::thread(&windows_thread::main, this);
-}
-
-
-windows_thread::~windows_thread()
-{
-	main_loop_->terminate();
-	thread_.join();
-	main_loop_.reset();
-
-	task_queue_.reset();
-
-	_aspect_assert(windows_thread::global_ == this);
-	windows_thread::global_ = NULL;
-}
-
-bool windows_thread::schedule(callback cb)
-{
-	return global()->main_loop_->schedule(cb);
-}
-
-void windows_thread::main()
-{
-
-//	printf("WINDOWS THREAD RUNNING...\n");
-
-	main_loop_->run();
-}
-
 
 // ------------------------------------------------------	
 /*
@@ -243,9 +100,9 @@ window::window(const creation_args *args)
 	message_handling_enabled_(false),
 	drag_accept_files_enabled_(false)
 {
-	window_thread_ = gs_windows_thread;
+//	window_thread_ = gs_oxygen_thread;
 
-	windows_thread::schedule(boost::bind(&window::create_window_impl, this, args));
+	oxygen_thread::schedule(boost::bind(&window::create_window_impl, this, args));
 
 	// TODO - WHAT IF CREATE WINDOW WILL FAIL?  IT WILL RESULT IN hwnd_ BEING NULL AND A DEADLOCK!
 
@@ -268,19 +125,24 @@ void window::create_window_impl( const creation_args *args) //video_mode mode, c
 	int width  = width_ = args->width;
 	int height = height_ = args->height;
 
+	style_ = args->style;
+
 	// Choose the window style according to the Style parameter
-/*	DWORD style = WS_VISIBLE;
-	if (style_ == AWS_NONE)
+	DWORD style = WS_CLIPCHILDREN; // WS_VISIBLE;
+	if (style_ == GWS_NONE)
 	{
-		style |= WS_POPUP;
+		style |= WS_POPUP; // WS_OVERLAPPEDWINDOW; // WS_POPUP;
 	}
 	else
 	{
-		if (style_ & AWS_TITLEBAR) style |= WS_CAPTION | WS_MINIMIZEBOX;
-		if (style_ & AWS_RESIZE)   style |= WS_THICKFRAME | WS_MAXIMIZEBOX;
-		if (style_ & AWS_CLOSE)    style |= WS_SYSMENU;
+		if (style_ & GWS_TITLEBAR) style |= WS_CAPTION | WS_MINIMIZEBOX;
+		if (style_ & GWS_RESIZE)   style |= WS_THICKFRAME | WS_MAXIMIZEBOX;
+		if (style_ & GWS_CLOSE)    style |= WS_SYSMENU;
 	}
-*/
+
+	if(style_ & GWS_APPWINDOW)
+		style |= WS_OVERLAPPEDWINDOW;
+
 	// In windowed mode, adjust width and height so that window will have the requested client area
 /*
 	if (!(style_ & AWS_FULLSCREEN))
@@ -298,7 +160,7 @@ void window::create_window_impl( const creation_args *args) //video_mode mode, c
 	hwnd_ = CreateWindowW(L"jsx", wcs_caption, style, left, top, width, height, NULL, NULL, GetModuleHandle(NULL), this);
 #else
 
-	DWORD style =  args->frame ? (WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN) : (WS_POPUP | WS_CLIPCHILDREN); // | WS_VISIBLE;
+//	DWORD style =  args->frame ? (WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN) : (WS_POPUP | WS_CLIPCHILDREN); // | WS_VISIBLE;
 
 	if(!args->splash.length())
 		style |= WS_VISIBLE;
@@ -353,13 +215,13 @@ window::~window()
 			boost::this_thread::yield();
 	}
 
-	window_thread_.reset();
+//	window_thread_.reset();
 }
 
 void window::destroy_window()
 {
 	if(hwnd_)
-		windows_thread::schedule(boost::bind(&window::destroy_window_impl, this));
+		oxygen_thread::schedule(boost::bind(&window::destroy_window_impl, this));
 }
 
 void window::destroy_window_impl( void )
@@ -396,27 +258,27 @@ void window::show_mouse_cursor( bool show )
 	::SetCursor(cursor_);
 }
 
-void window::process_events( void )
-{
-	MSG msg;
-	//					  while (GetMessage(&msg, hwnd_, 0, 0, PM_REMOVE))
-	while (PeekMessage(&msg, hwnd_, 0, 0, PM_REMOVE))
-	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-	}
-}
+// static void window::process_events( void )
+// {
+// 	MSG msg;
+// 	//					  while (GetMessage(&msg, hwnd_, 0, 0, PM_REMOVE))
+// 	while (PeekMessage(&msg, hwnd_, 0, 0, PM_REMOVE))
+// 	{
+// 		TranslateMessage(&msg);
+// 		DispatchMessage(&msg);
+// 	}
+// }
 
-void window::process_events_blocking( void )
-{
-	MSG msg;
-	while (GetMessage(&msg, NULL, 0, 0))
-		//while (PeekMessage(&msg, hwnd_, 0, 0, PM_REMOVE))
-	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-	}
-}
+// void window::process_events_blocking( void )
+// {
+// 	MSG msg;
+// 	while (GetMessage(&msg, NULL, 0, 0))
+// 		//while (PeekMessage(&msg, hwnd_, 0, 0, PM_REMOVE))
+// 	{
+// 		TranslateMessage(&msg);
+// 		DispatchMessage(&msg);
+// 	}
+// }
 
 void window::process_event( UINT message, WPARAM wparam, LPARAM lparam )
 {
@@ -444,12 +306,12 @@ void window::process_event( UINT message, WPARAM wparam, LPARAM lparam )
 
 		case WM_CLOSE:
 		{
-			if(style_ & AWS_APPWINDOW)
+/*			if(style_ & AWS_APPWINDOW)
 			{
 //				set_terminating();
 				PostQuitMessage(true);
 			}
-
+*/
 
 			if(event_handlers_.has("close"))
 				runtime::main_loop().schedule(boost::bind(&window::v8_process_event, this, std::string("close")));
@@ -802,13 +664,13 @@ v8::Handle<v8::Value> window::on(std::string const& name, Handle<Value> fn)
 	if(name == "drag_accept_files")
 		runtime::main_loop().schedule(boost::bind(&window::drag_accept_files_enable_impl, this));
 
-	event_handlers_.on(name,fn);
+	window_base::on(name,fn);
 	return convert::CastToJS(this);
 }
 
 v8::Handle<v8::Value> window::off(std::string const& name)
 {
-	event_handlers_.off(name);
+	window_base::off(name);
 	return convert::CastToJS(this);
 }
 

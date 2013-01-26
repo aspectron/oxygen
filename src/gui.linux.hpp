@@ -5,7 +5,7 @@
 
 //#define ASPECT_XF86
 
-#if OS(LINUX)
+#if 1 // OS(LINUX)
 
 // #include <GL/glxew.h>
 
@@ -37,7 +37,7 @@ namespace aspect
 		void OXYGEN_API cleanup(void);
 		Bool check_event(::Display*, XEvent* event, XPointer user_data);
 
-		class OXYGEN_API window : public shared_ptr_object<window>
+		class OXYGEN_API window : public shared_ptr_object<window>, public window_base
 		{
 			private:
 
@@ -66,7 +66,7 @@ namespace aspect
 
 				XVisualInfo &get_current_visual(void) { return current_visual_; }
 
-void test_function_binding(void) { printf("Hello World!"); }
+				void test_function_binding(void) { printf("Hello World!"); }
 
 
 /*
@@ -92,12 +92,19 @@ void test_function_binding(void) { printf("Hello World!"); }
 					style_(0),
 					terminating_(false)
 				{
+					window_list_.push_back(self());
 					create_window(args);
 				}
 
 				virtual ~window()
 				{
 					destroy_window();
+
+					// window *self = shared_from_this().get();
+					std::vector<boost::shared_ptr<window>>::iterator iter = window_list_.find(self());
+					if(iter != window_list_.end())
+						window_list_.erase(iter);
+
 				}
 
 				void create_window(const creation_args *args) //video_mode mode, const std::string& caption, unsigned long requested_style)
@@ -199,17 +206,20 @@ void test_function_binding(void) { printf("Hello World!"); }
 							Hints.Decorations = 0;
 							Hints.Functions   = 0;
 
-							//if (style_ & AWS_TITLEBAR)
+							if (args->style & GWS_TITLEBAR)
 							{
 								Hints.Decorations |= MWM_DECOR_BORDER | MWM_DECOR_TITLE | MWM_DECOR_MINIMIZE | MWM_DECOR_MENU;
 								Hints.Functions   |= MWM_FUNC_MOVE | MWM_FUNC_MINIMIZE;
 							}
-							//if (style_ & AWS_RESIZE)
+							if (args->style & GWS_RESIZE)
+							//if(args->flags & GDI_WS_RESIZE)
 							{
 								Hints.Decorations |= MWM_DECOR_MAXIMIZE | MWM_DECOR_RESIZEH;
 								Hints.Functions   |= MWM_FUNC_MAXIMIZE | MWM_FUNC_RESIZE;
 							}
-							//if (style_ & AWS_CLOSE)
+							
+							if (args->style & GWS_CLOSE)
+							//if(args->closeable)
 							{
 								Hints.Decorations |= 0;
 								Hints.Functions   |= MWM_FUNC_CLOSE;
@@ -779,6 +789,12 @@ terminating_ = true;
 
 				}
 
+				/*
+				static process_events(void)
+				{
+					// iterate through all windows (?)
+				}
+				*/
 
 				void process_events(void)
 				{
@@ -945,6 +961,8 @@ terminating_ = true;
 
 				void use_as_splash_screen(std::string filename) { }
 
+				static std::vector<boost::shared_ptr<window>> window_list_;
+				static std::vector<boost::shared_ptr<window>>& get_window_list(void) { return window_list_; } 
 
 		};
 

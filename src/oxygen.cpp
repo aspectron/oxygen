@@ -59,7 +59,15 @@ void oxygen_install(Handle<Object> target)
 
 	V8_DECLARE_FUNCTION(target, get_screen_size);
 
-
+	Handle<Object> styles = Object::New();
+	target->Set(String::New("styles"), styles);
+	V8_DECLARE_NAMED_CONSTANT(styles, "NONE", aspect::gui::GWS_NONE);
+	V8_DECLARE_NAMED_CONSTANT(styles, "TITLEBAR", aspect::gui::GWS_TITLEBAR);
+	V8_DECLARE_NAMED_CONSTANT(styles, "RESIZE", aspect::gui::GWS_RESIZE);
+	V8_DECLARE_NAMED_CONSTANT(styles, "CLOSE", aspect::gui::GWS_CLOSE);
+	V8_DECLARE_NAMED_CONSTANT(styles, "FULLSCREEN", aspect::gui::GWS_FULLSCREEN);
+	V8_DECLARE_NAMED_CONSTANT(styles, "APPLICATION", aspect::gui::GWS_APPWINDOW);
+	
 }
 
 void oxygen_uninstall(Handle<Object> target) 
@@ -98,17 +106,17 @@ aspect::gui::window* WeakJSClassCreatorOps<aspect::gui::window>::Ctor( v8::Argum
 
 	ca.style = convert::JSToUInt32(o->Get(String::New("style")));
 	if(!ca.style)
-		ca.style = AWS_TITLEBAR | AWS_RESIZE | AWS_CLOSE | AWS_APPWINDOW;
+		ca.style = aspect::gui::GWS_TITLEBAR | aspect::gui::GWS_RESIZE | aspect::gui::GWS_CLOSE | aspect::gui::GWS_APPWINDOW;
 
 	Handle<Value> splash = o->Get(String::New("splash"));
 	if(splash->IsString())
 		ca.splash = convert::JSToStdString(splash);
 
-	Handle<Value> frame = o->Get(String::New("frame"));
-	if(!frame->IsUndefined())
-		ca.frame = convert::JSToBool(frame);
-	else
-		ca.frame = true;
+// 	Handle<Value> frame = o->Get(String::New("frame"));
+// 	if(!frame->IsUndefined())
+// 		ca.frame = convert::JSToBool(frame);
+// 	else
+// 		ca.frame = true;
 
 //	boost::shared_ptr<window> ptr(new aspect::gui::window(&ca));
 //	ptr->self_ = ptr;

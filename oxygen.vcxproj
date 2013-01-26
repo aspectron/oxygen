@@ -143,6 +143,7 @@
     <ClInclude Include="src\video_modes.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\gui.cpp" />
     <ClCompile Include="src\gui.linux.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>

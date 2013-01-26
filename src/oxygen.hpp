@@ -4,6 +4,15 @@
 #include "v8_core.hpp"
 #include "shared_ptr_object.hpp"
 #include "math.hpp"
+#include "async_queue.hpp"
+#include "events.hpp"
+#include "runtime.hpp"
+#include "v8_main_loop.hpp"
+
+#include <iostream>
+#include <vector>
+
+#include "boost/enable_shared_from_this.hpp"
 
 #if OS(WINDOWS)
 //	#pragma warning ( disable : 4251 )
