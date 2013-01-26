@@ -101,7 +101,8 @@ namespace aspect
 					destroy_window();
 
 					// window *self = shared_from_this().get();
-					std::vector<boost::shared_ptr<window>>::iterator iter = window_list_.find(self());
+//					std::vector<boost::shared_ptr<window>>::iterator iter = window_list_.find(self());
+					std::vector<boost::shared_ptr<window>>::iterator iter = std::find(window_list_.begin(), window_list_.end(), self());
 					if(iter != window_list_.end())
 						window_list_.erase(iter);
 

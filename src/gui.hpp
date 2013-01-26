@@ -54,7 +54,9 @@ namespace aspect
 				}
 				virtual ~event_sink() { }
 						
+#if OS(WINDOWS)
 				virtual bool process_events(UINT message, WPARAM wparam, LPARAM lparam) = 0;
+#endif
 				void assoc(window *w);
 				void unregister(void);
 
