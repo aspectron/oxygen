@@ -12,7 +12,8 @@ var window = oxygen.window({
 	height: 480,
 	bpp: 32,
 	caption: "oxygen",
-	style : 0
+//	frame: true,
+	style : oxygen.styles.APPLICATION
 })
 
 log.info("Window created...");

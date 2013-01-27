@@ -207,19 +207,23 @@ namespace aspect
 							Hints.Decorations = 0;
 							Hints.Functions   = 0;
 
-							if (args->style & GWS_TITLEBAR)
+							uint32_t style = args->style;
+							if(style & GWS_APPWINDOW)
+								style |= GWS_TITLEBAR | GWS_RESIZE | GWS_CLOSE;
+
+							if (style & GWS_TITLEBAR)
 							{
 								Hints.Decorations |= MWM_DECOR_BORDER | MWM_DECOR_TITLE | MWM_DECOR_MINIMIZE | MWM_DECOR_MENU;
 								Hints.Functions   |= MWM_FUNC_MOVE | MWM_FUNC_MINIMIZE;
 							}
-							if (args->style & GWS_RESIZE)
+							if (style & GWS_RESIZE)
 							//if(args->flags & GDI_WS_RESIZE)
 							{
 								Hints.Decorations |= MWM_DECOR_MAXIMIZE | MWM_DECOR_RESIZEH;
 								Hints.Functions   |= MWM_FUNC_MAXIMIZE | MWM_FUNC_RESIZE;
 							}
-							
-							if (args->style & GWS_CLOSE)
+
+							if (style & GWS_CLOSE)
 							//if(args->closeable)
 							{
 								Hints.Decorations |= 0;
@@ -242,6 +246,8 @@ namespace aspect
 						}
 #endif
 					}
+
+printf("done creating window...\n");
 
 					// Do some common initializations
 					_init();

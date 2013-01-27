@@ -8,6 +8,9 @@
 #include <X11/keysym.h>
 // #include <X11/extensions/Xrandr.h>
 
+using namespace v8;
+using namespace v8::juice;
+
 namespace aspect
 {
 namespace gui 
