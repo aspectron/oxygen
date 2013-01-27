@@ -156,8 +156,8 @@ namespace aspect
 				window_base();
 				virtual ~window_base();
 
-				void register_event_sink(boost::shared_ptr<event_sink>& sink);
-				void unregister_event_sink(boost::shared_ptr<event_sink>& sink);
+				void register_event_sink(boost::shared_ptr<event_sink> sink);
+				void unregister_event_sink(boost::shared_ptr<event_sink> sink);
 
 
 				void on(std::string const& name, v8::Handle<v8::Value> fn);

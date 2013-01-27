@@ -201,13 +201,13 @@ window_base::~window_base()
 }
 
 
-void window_base::register_event_sink(boost::shared_ptr<event_sink>& sink)
+void window_base::register_event_sink(boost::shared_ptr<event_sink> sink)
 {
 	event_sinks_.push_back(sink);
 	sink->assoc((window*)this);
 }
 
-void window_base::unregister_event_sink(boost::shared_ptr<event_sink>& sink)
+void window_base::unregister_event_sink(boost::shared_ptr<event_sink> sink)
 {
 	std::vector<boost::shared_ptr<event_sink>>::iterator iter;
 	for(iter = event_sinks_.begin(); iter != event_sinks_.end(); iter++)
