@@ -63,6 +63,7 @@ namespace aspect
 				void v8_process_message(uint32_t message, uint32_t wparam, uint32_t lparam);
 				void v8_process_input_event(boost::shared_ptr<input_event> e);
 				void v8_process_event(std::string const&);
+				void v8_process_resize(uint32_t w, uint32_t h);
 
 //				boost::shared_ptr<window> self_;
 

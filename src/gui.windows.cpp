@@ -296,6 +296,9 @@ void window::process_event( UINT message, WPARAM wparam, LPARAM lparam )
 		{
 			update_window_size();
 
+			if(event_handlers_.has("resize"))
+				runtime::main_loop().schedule(boost::bind(&window::v8_process_resize, this, width_, height_));
+
 		} break;
 
 		case WM_DESTROY:
@@ -354,7 +357,7 @@ void window::process_event( UINT message, WPARAM wparam, LPARAM lparam )
 			} break;
 #endif
 
-		case WM_KEYDOWN:
+		case WM_KEYUP:
 			{
 				if(event_handlers_.has("keyup"))
 				{
@@ -372,7 +375,7 @@ void window::process_event( UINT message, WPARAM wparam, LPARAM lparam )
 
 			} break;
 
-		case WM_KEYUP:
+		case WM_KEYDOWN:
 			{
 				if(event_handlers_.has("keydown"))
 				{
@@ -532,6 +535,17 @@ void window::v8_process_input_event(boost::shared_ptr<input_event> e)
 	v8::Handle<v8::Value> args[1] = { o };
 	event_handlers_.call(e->type_, convert::CastToJS(this)->ToObject(), 1, args);
 }
+
+void window::v8_process_resize(uint32_t w, uint32_t h)
+{
+	Handle<Object> o = Object::New();
+	o->Set(String::New("width"), convert::UInt32ToJS(w));
+	o->Set(String::New("height"), convert::UInt32ToJS(h));
+
+	v8::Handle<v8::Value> args[1] = { o };
+	event_handlers_.call("resize", convert::CastToJS(this)->ToObject(), 1, args);
+}
+
 
 void window::show( bool visible )
 {

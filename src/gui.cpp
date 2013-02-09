@@ -17,7 +17,7 @@ void event_sink::unregister(void)
 { 
 	if(window_) 
 	{
-		window_->unregister_event_sink(shared_from_this()); 
+		window_->unregister_event_sink(self()); 
 		window_ = NULL;
 	}
 }
