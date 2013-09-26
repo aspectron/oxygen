@@ -65,7 +65,10 @@ LRESULT CALLBACK window::window_proc(HWND hwnd, UINT message, WPARAM wparam, LPA
 	bool proceed = false;
 	if (window* wnd = (window*)GetWindowLongPtr(hwnd, GWLP_USERDATA))
 	{
-		proceed = wnd->process_event(message, wparam, lparam, result);
+		if (wnd->hwnd_ == hwnd)
+		{
+			proceed = wnd->process_event(message, wparam, lparam, result);
+		}
 	}
 
 	/*
