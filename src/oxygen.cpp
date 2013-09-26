@@ -1,135 +1,91 @@
 #include "oxygen.hpp"
 #include "library.hpp"
 
+namespace aspect { namespace gui {
 
 using namespace v8;
-using namespace v8::juice;
-
-// ----------------------------------------------------------------------
 
 Handle<Value> get_screen_size(Arguments const&)
 {
 	HandleScope scope;
 
-	Handle<Object> o = Object::New();
+	video_mode const curr_mode = get_current_video_mode();
 
-#if OS(WINDOWS)
-	o->Set(String::New("width"), convert::UInt32ToJS(GetSystemMetrics(SM_CXSCREEN)));
-	o->Set(String::New("height"), convert::UInt32ToJS(GetSystemMetrics(SM_CYSCREEN)));
-#else
-#pragma error "TODO - get_screen_size()!"
-#endif
+	Handle<Object> o = Object::New();
+	o->Set(v8pp::to_v8("width"), v8pp::to_v8(curr_mode.width));
+	o->Set(v8pp::to_v8("height"), v8pp::to_v8(curr_mode.height));
 
 	return scope.Close(o);
 }
 
-// ----------------------------------------------------------------------
-
-V8_IMPLEMENT_CLASS_BINDER(aspect::gui::window, aspect_window);
-
 DECLARE_LIBRARY_ENTRYPOINTS(oxygen_install, oxygen_uninstall);
 
-void oxygen_install(Handle<Object> target)
+Handle<Value> oxygen_install()
 {
-#if OS(WINDOWS)
-	aspect::gui::init((HINSTANCE)GetModuleHandle(NULL));
-#else
-	aspect::gui::init();
-#endif
+	window::init();
 
-	using namespace aspect::gui;
+	v8pp::module oxygen_module;
 
-	ClassBinder<aspect::gui::window> *binder_window = new ClassBinder<aspect::gui::window>(target);
-	V8_SET_CLASS_BINDER(aspect::gui::window, binder_window);
-	(*binder_window)
-		.BindMemFunc<void, &window::test_function_binding>("test_function_binding")
-		.BindMemFunc<void, &window::destroy_window>("destroy")
-		.BindMemFunc<Handle<Value>, string const&, Handle<Value>, &window::on>("on")
-		.BindMemFunc<Handle<Value>, string const&, &window::off>("off")
-		.BindMemFunc<&window::get_client_rect>("get_client_rect")
-		.BindMemFunc<&window::get_window_rect>("get_window_rect")
-		.BindMemFunc<void, uint32_t, uint32_t, uint32_t, uint32_t, &window::set_window_rect>("set_window_rect")
-		.BindMemFunc<void, bool, &window::show_frame>("show_frame")
-		.BindMemFunc<void, bool, &window::set_topmost>("set_topmost")
-//		.BindMemFunc<void, std::string, &window::use_as_splash_screen>("use_as_splash_screen")
-		.BindMemFunc<void, std::string const&, &window::load_icon_from_file>("load_icon_from_file")
-		.Seal();
+	window::js_class window_class;
+	window_class
+		.set("destroy", &window::destroy)
+		.set("on", &window::on)
+		.set("off", &window::off)
+		.set("width", v8pp::property(&window::width))
+		.set("height", v8pp::property(&window::height))
+		.set("get_client_rect", &window::get_client_rect)
+		.set("get_window_rect", &window::get_window_rect)
+		.set("set_window_rect", &window::set_window_rect)
+		.set("show_frame", &window::show_frame)
+		.set("set_topmost", &window::set_topmost)
+		.set("use_as_splash_screen", &window::use_as_splash_screen)
+		.set("load_icon_from_file", &window::load_icon_from_file)
+		;
+	oxygen_module.set("window", window_class);
 
-	// ---
+	oxygen_module.set("get_screen_size", get_screen_size);
 
-	V8_DECLARE_FUNCTION(target, get_screen_size);
+	v8pp::module styles;
+	styles.set_const("NONE", GWS_NONE);
+	styles.set_const("TITLEBAR", GWS_TITLEBAR);
+	styles.set_const("RESIZE", GWS_RESIZE);
+	styles.set_const("CLOSE", GWS_CLOSE);
+	styles.set_const("FULLSCREEN", GWS_FULLSCREEN);
+	styles.set_const("APPLICATION", GWS_APPWINDOW);
+	oxygen_module.set("styles", styles);
 
-	Handle<Object> styles = Object::New();
-	target->Set(String::New("styles"), styles);
-	V8_DECLARE_NAMED_CONSTANT(styles, "NONE", aspect::gui::GWS_NONE);
-	V8_DECLARE_NAMED_CONSTANT(styles, "TITLEBAR", aspect::gui::GWS_TITLEBAR);
-	V8_DECLARE_NAMED_CONSTANT(styles, "RESIZE", aspect::gui::GWS_RESIZE);
-	V8_DECLARE_NAMED_CONSTANT(styles, "CLOSE", aspect::gui::GWS_CLOSE);
-	V8_DECLARE_NAMED_CONSTANT(styles, "FULLSCREEN", aspect::gui::GWS_FULLSCREEN);
-	V8_DECLARE_NAMED_CONSTANT(styles, "APPLICATION", aspect::gui::GWS_APPWINDOW);
-	
+	return oxygen_module.new_instance();
 }
 
-void oxygen_uninstall(Handle<Object> target) 
+void oxygen_uninstall(Handle<Value> library)
 {
-	V8_DESTROY_CLASS_BINDER(aspect::gui::window);
-
-	aspect::gui::cleanup();
+	window::cleanup();
+	window::js_class::destroy_objects();
 }
 
-namespace v8 { namespace juice {
-
-aspect::gui::window* WeakJSClassCreatorOps<aspect::gui::window>::Ctor( v8::Arguments const & args, std::string & exceptionText )
+template<typename T>
+T get_option(Handle<Object> options, char const* name, T def_value)
 {
-	using namespace aspect;
-	using namespace aspect::gui;
+	Handle<Value> value = options->Get(String::New(name));
+	return value.IsEmpty() || value == Undefined()? def_value : v8pp::from_v8<T>(value);
+}
 
-//		video_mode mode(1280,720,32);
-	if(!args.Length())
+creation_args::creation_args(v8::Arguments const& args)
+{
+	HandleScope scope;
+
+	Handle<Object> options = args[0]->ToObject();
+	if (options.IsEmpty())
+	{
 		throw std::runtime_error("Window constructor requires configuration object as an argument");
+	}
 
-	creation_args ca;
-
-	Handle<Object> o = args[0]->ToObject();
-
-	ca.width = convert::JSToUInt32(o->Get(String::New("width")));
-	if(!ca.width || ca.width > 1024*10)
-		ca.width = 640;
-	ca.height = convert::JSToUInt32(o->Get(String::New("height")));
-	if(!ca.height || ca.height > 1024*10)
-		ca.height = 480;
-	ca.bpp = convert::JSToUInt32(o->Get(String::New("bpp")));
-	if(!ca.bpp)
-		ca.bpp = 32;
-
-	ca.caption = convert::JSToStdString(o->Get(String::New("caption")));
-
-	ca.style = convert::JSToUInt32(o->Get(String::New("style")));
-	if(!ca.style)
-		ca.style = aspect::gui::GWS_TITLEBAR | aspect::gui::GWS_RESIZE | aspect::gui::GWS_CLOSE | aspect::gui::GWS_APPWINDOW;
-
-	Handle<Value> splash = o->Get(String::New("splash"));
-	if(splash->IsString())
-		ca.splash = convert::JSToStdString(splash);
-
-// 	Handle<Value> frame = o->Get(String::New("frame"));
-// 	if(!frame->IsUndefined())
-// 		ca.frame = convert::JSToBool(frame);
-// 	else
-// 		ca.frame = true;
-
-//	boost::shared_ptr<window> ptr(new aspect::gui::window(&ca));
-//	ptr->self_ = ptr;
-//	return ptr.get();
-	return new aspect::gui::window(&ca);
+	width = min(get_option(options, "width", 640), 1024*10);
+	height = min(get_option(options, "height", 480), 1024*10);
+	bpp = get_option(options, "bpp", 32);
+	style = get_option(options, "style", GWS_TITLEBAR | GWS_RESIZE | GWS_CLOSE | GWS_APPWINDOW);
+	caption = get_option(options, "caption", caption);
+	splash = get_option(options, "splash", splash);
 }
 
-void WeakJSClassCreatorOps<aspect::gui::window>::Dtor( aspect::gui::window *o )
-{
-//	o->self_.reset();
-//	delete o;
-	o->release();
-}
-
-}} // ::v8::juice
-
+}} // ::aspect::gui

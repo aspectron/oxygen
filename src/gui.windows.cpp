@@ -5,554 +5,444 @@
 #include "shellapi.h"
 
 using namespace v8;
-using namespace v8::juice;
 
 namespace aspect { namespace gui {
 
-HBRUSH gs_hbrush = NULL;
-HINSTANCE gs_hinstance = NULL;
-LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
+static wchar_t const WINDOW_CLASS_NAME[] = L"jsx_generic";
 
-void init(HINSTANCE hinstance)
+void window::init()
 {
-	gs_hinstance = hinstance;
+	HINSTANCE hinstance = (HINSTANCE)GetModuleHandle(NULL);
 
-	WNDCLASS wc = {0};			// window's class struct
-	HBRUSH hBrush = NULL;		// will contain the background color of the main window
-
-	// set the background color to black (this may be changed to whatever is needed)
-	gs_hbrush = CreateSolidBrush(RGB(0, 0, 0));
+	WNDCLASSW wc = {}; // window's class struct
 
 	// we must specify the attribs for the window's class
 	wc.style			= CS_HREDRAW|CS_VREDRAW|CS_OWNDC|CS_DBLCLKS;	// style bits (CS_OWNDC very important for OGL)
-	wc.lpfnWndProc		= (WNDPROC)window_proc;					// window procedure to use
+	wc.lpfnWndProc		= window::window_proc;					// window procedure to use
 	wc.cbClsExtra		= 0;								// no extra data
 	wc.cbWndExtra		= 0;								// no extra data
-	wc.hInstance		= gs_hinstance;						// associated instance
+	wc.hInstance		= hinstance;						// associated instance
 	wc.hIcon			= NULL;								// use default icon temporarily
 	wc.hCursor			= LoadCursor(NULL, IDC_ARROW);		// use default cursor (Windows owns it, so don't unload)
-	wc.hbrBackground	= hBrush;							// background brush (don't destroy, let windows handle it)
-	wc.lpszClassName	= L"jsx_generic";//APP_CLASSNAME;					// class name
+	wc.hbrBackground	= (HBRUSH)GetStockObject(BLACK_BRUSH);// background brush (don't destroy, let windows handle it)
+	wc.lpszClassName	= WINDOW_CLASS_NAME;					// class name
 
 	// this will create or not create a menu for the main window (depends on app settings)
 	wc.lpszMenuName = NULL; // (APP_ALLOW_MENU) ? MAKEINTRESOURCE(IDR_MAINFRAME) : NULL;
 
 	// now, we can register this class
-	RegisterClass(&wc);
+	RegisterClassW(&wc);
 
-	// start windows event processing thread
-//	gs_oxygen_thread.reset(new oxygen_thread());
 	oxygen_thread::start();
 }
 
-void cleanup(void)
+void window::cleanup()
 {
-//	gs_oxygen_thread.reset();
 	oxygen_thread::stop();
-
-	// clean-up (windows specific items)
-	if(gs_hbrush != NULL) DeleteObject(gs_hbrush);
 }
 
-
-
-LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
+void window::process_windows_events()
 {
+	MSG msg;
+	while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+	{
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+}
 
+LRESULT CALLBACK window::window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
+{
 	// Associate handle and Window instance when the creation message is received
-	if (message == WM_CREATE)
+	if (message == WM_NCCREATE)
 	{
-		LONG_PTR _pwnd = reinterpret_cast<LONG_PTR>(reinterpret_cast<CREATESTRUCT*>(lparam)->lpCreateParams);
-		SetWindowLongPtr(hwnd, GWLP_USERDATA, _pwnd);
+		window* wnd = (window*)((CREATESTRUCTW*)lparam)->lpCreateParams;
+		wnd->hwnd_ = hwnd;
+		SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)wnd);
 	}
 
-	window *pwnd = window::pwnd_from_hwnd(hwnd);
-	if (pwnd)
+	LRESULT result = 0;
+	bool proceed = false;
+	if (window* wnd = (window*)GetWindowLongPtr(hwnd, GWLP_USERDATA))
 	{
-//		boost::shared_ptr<window> test = pwnd->shared_from_this();
-		pwnd->process_event(message, wparam, lparam);
+		proceed = wnd->process_event(message, wparam, lparam, result);
 	}
 
+	/*
 	// don't forward the WM_CLOSE message to prevent the OS from automatically destroying the window
 	if (message == WM_CLOSE)
 		return 0;
+	*/
 
-	return ::DefWindowProc(hwnd, message, wparam, lparam);
+	return proceed? result : ::DefWindowProc(hwnd, message, wparam, lparam);
 }
 
-// ------------------------------------------------------	
-
-
-
-// ------------------------------------------------------	
-/*
-boost::shared_ptr<window> window::shared_from_this()
+window::window(Arguments const& v8_args)
+	: hwnd_(NULL)
+	, width_(0)
+	, height_(0)
+	, cursor_(LoadCursor(NULL, IDC_ARROW))
+	, fullscreen_(false)
+	, message_handling_enabled_(false)
+	, drag_accept_files_enabled_(false)
 {
-	return boost::enable_shared_from_this<window>::shared_from_this();
-}
-*/
-
-window::window(const creation_args *args)
-:	hwnd_(NULL),
-	window_created_(NULL),
-	style_(0),
-	fullscreen_(false),
-	message_handling_enabled_(false),
-	drag_accept_files_enabled_(false)
-{
-//	window_thread_ = gs_oxygen_thread;
-
-	oxygen_thread::schedule(boost::bind(&window::create_window_impl, this, args));
-
-	// TODO - WHAT IF CREATE WINDOW WILL FAIL?  IT WILL RESULT IN hwnd_ BEING NULL AND A DEADLOCK!
-
-	while(aspect::utils::atomic_is_null(window_created_)) //hwnd_))
+	creation_args const args(v8_args);
+	oxygen_thread::schedule(boost::bind(&window::create, this, args));
+	while (!hwnd_)
 	{
-//		printf("waiting...\n");
-//		boost::this_thread::yield();
-		Sleep(5);
+		boost::this_thread::yield();
 	}
 }
 
-void window::create_window_impl( const creation_args *args) //video_mode mode, const std::string& caption, unsigned long requested_style ) 
+void window::create(creation_args args)
 {
-//	boost::shared_ptr<window> test = shared_from_this();
-//	printf("ENTERED CREATE_WINDOW_IMPL\n");
-
-	// Compute position and size
-	int left   = (GetDeviceCaps(GetDC(NULL), HORZRES) - args->width)  / 2;
-	int top    = (GetDeviceCaps(GetDC(NULL), VERTRES) - args->height) / 2;
-	int width  = width_ = args->width;
-	int height = height_ = args->height;
-
-	style_ = args->style;
+	style_ = args.style;
 
 	// Choose the window style according to the Style parameter
-	DWORD style = WS_CLIPCHILDREN; // WS_VISIBLE;
+	DWORD window_style = WS_CLIPCHILDREN;
 	if (style_ == GWS_NONE)
 	{
-		style |= WS_POPUP; // WS_OVERLAPPEDWINDOW; // WS_POPUP;
+		window_style |= WS_POPUP;
 	}
 	else
 	{
-		if (style_ & GWS_TITLEBAR) style |= WS_CAPTION | WS_MINIMIZEBOX;
-		if (style_ & GWS_RESIZE)   style |= WS_THICKFRAME | WS_MAXIMIZEBOX;
-		if (style_ & GWS_CLOSE)    style |= WS_SYSMENU;
+		if (style_ & GWS_TITLEBAR) window_style |= WS_CAPTION | WS_MINIMIZEBOX;
+		if (style_ & GWS_RESIZE)   window_style |= WS_THICKFRAME | WS_MAXIMIZEBOX;
+		if (style_ & GWS_CLOSE)    window_style |= WS_SYSMENU;
 	}
 
-	if(style_ & GWS_APPWINDOW)
-		style |= WS_OVERLAPPEDWINDOW;
+	if (style_ & GWS_APPWINDOW)
+	{
+		window_style |= WS_OVERLAPPEDWINDOW;
+	}
+	RECT window_rect;
+	window_rect.left = (get_current_video_mode().width - args.width) / 2;
+	window_rect.top = (get_current_video_mode().height - args.height) / 2;
+	window_rect.right = window_rect.left + args.width;
+	window_rect.bottom = window_rect.top + args.height;
 
 	// In windowed mode, adjust width and height so that window will have the requested client area
-/*
-	if (!(style_ & AWS_FULLSCREEN))
+	if (!(style_ & GWS_FULLSCREEN))
 	{
-		RECT rect = {0, 0, width, height};
-		AdjustWindowRect(&rect, style, false);
-		width  = rect.right - rect.left;
-		height = rect.bottom - rect.top;
+		AdjustWindowRect(&window_rect, window_style, false);
 	}
-*/
-#if 0
-	wchar_t wcs_caption[256];
-	int nb_chars = MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, caption.c_str(), static_cast<int>(caption.size()), wcs_caption, sizeof(wcs_caption) / sizeof(*wcs_caption));
-	wcs_caption[nb_chars] = L'\0';
-	hwnd_ = CreateWindowW(L"jsx", wcs_caption, style, left, top, width, height, NULL, NULL, GetModuleHandle(NULL), this);
-#else
 
-//	DWORD style =  args->frame ? (WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN) : (WS_POPUP | WS_CLIPCHILDREN); // | WS_VISIBLE;
+	if (args.splash.empty())
+	{
+		window_style |= WS_VISIBLE;
+	}
 
-	if(!args->splash.length())
-		style |= WS_VISIBLE;
-
-	std::string caption = args->caption;
+	std::wstring caption = args.caption;
 #if TARGET(DEBUG)
-	caption += " (DEBUG)";
+	caption += L" (DEBUG)";
 #endif
 
-	hwnd_ = CreateWindowA("jsx_generic", caption.c_str(), style, left, top, width, height, NULL, NULL, GetModuleHandle(NULL), this);
-
-//	printf("WINDOW CREATED: %08x\n",(int)hwnd_);
-
-#endif				  
-
+	hwnd_ = CreateWindowW(WINDOW_CLASS_NAME, caption.c_str(), window_style,
+		window_rect.left, window_rect.top,
+		window_rect.right - window_rect.left, window_rect.bottom - window_rect.top,
+		NULL, NULL, GetModuleHandle(NULL), this);
 	// Switch to fullscreen if requested
-/*	if (style_ & AWS_FULLSCREEN)
+	if ((style_ & GWS_FULLSCREEN))
 	{
-		video_mode mode(args->width,args->height,args->bpp);
+		video_mode mode(args.width, args.height, args.bpp);
 		switch_to_fullscreen(mode);
 	}
-*/
+
 	// Get the actual size of the window, which can be smaller even after the call to AdjustWindowRect
 	// This happens when the window is bigger than the desktop
 	update_window_size();
-	RECT client_rect;
-//	GetClientRect(*this, &client_rect);
-//	width_  = client_rect.right - client_rect.left;
-//	height_ = client_rect.bottom - client_rect.top;
 
-	HDC hdc = GetDC(hwnd_);
-	HBRUSH hBrush = CreateSolidBrush(0);
-	FillRect(hdc,&client_rect,hBrush);
-	DeleteObject(hBrush);
-	ReleaseDC(hwnd_,hdc);
-
-	if(args->splash.length())
+	if (!args.splash.empty())
 	{
-		use_as_splash_screen(args->splash);
-		ShowWindow(*this,SW_SHOW);
+		use_as_splash_screen(args.splash);
+		ShowWindow(hwnd_, SW_SHOW);
 	}
-
-	window_created_ = hwnd_;
 }
 
-window::~window()
+void window::destroy()
 {
-	if(hwnd_)
+	if (hwnd_)
 	{
-		destroy_window();
-		while(aspect::utils::atomic_is_not_null(hwnd_))
-			boost::this_thread::yield();
-	}
-
-//	window_thread_.reset();
-}
-
-void window::destroy_window()
-{
-	if(hwnd_)
-		oxygen_thread::schedule(boost::bind(&window::destroy_window_impl, this));
-}
-
-void window::destroy_window_impl( void )
-{
-	if(hwnd_)
-	{
-// 		if(fullscreen_)
-// 		{
-// 			ChangeDisplaySettings(NULL,0);
-// 			show_mouse_cursor(true);
-// 		}
-
+		if(fullscreen_)
+		{
+			ChangeDisplaySettings(NULL,0);
+			show_mouse_cursor(true);
+		}
 		::DestroyWindow(hwnd_);
 		hwnd_ = NULL;
 	}
-
 }
 
-void window::update_window_size(void)
+void window::update_window_size()
 {
 	RECT client_rect;
-	GetClientRect(*this, &client_rect);
-	width_  = client_rect.right - client_rect.left;
-	height_ = client_rect.bottom - client_rect.top;
-}
-
-void window::show_mouse_cursor( bool show )
-{
-	if(show)
-		cursor_ = LoadCursor(NULL,IDC_ARROW);
-	else
-		cursor_ = NULL;
-
-	::SetCursor(cursor_);
-}
-
-// static void window::process_events( void )
-// {
-// 	MSG msg;
-// 	//					  while (GetMessage(&msg, hwnd_, 0, 0, PM_REMOVE))
-// 	while (PeekMessage(&msg, hwnd_, 0, 0, PM_REMOVE))
-// 	{
-// 		TranslateMessage(&msg);
-// 		DispatchMessage(&msg);
-// 	}
-// }
-
-// void window::process_events_blocking( void )
-// {
-// 	MSG msg;
-// 	while (GetMessage(&msg, NULL, 0, 0))
-// 		//while (PeekMessage(&msg, hwnd_, 0, 0, PM_REMOVE))
-// 	{
-// 		TranslateMessage(&msg);
-// 		DispatchMessage(&msg);
-// 	}
-// }
-
-void window::process_event( UINT message, WPARAM wparam, LPARAM lparam )
-{
-	if(hwnd_ == NULL)
-		return;
-
-	std::vector<boost::shared_ptr<event_sink>>::iterator iter;
-	for(iter = event_sinks_.begin(); iter != event_sinks_.end(); iter++)
-		if(!(*iter)->process_events(message,wparam,lparam))
-			return;
-
-	switch(message)
+	if (GetClientRect(hwnd_, &client_rect))
 	{
-		case WM_SIZE:
+		width_  = client_rect.right - client_rect.left;
+		height_ = client_rect.bottom - client_rect.top;
+	}
+}
+
+void window::show_mouse_cursor(bool show)
+{
+	cursor_= (show? LoadCursor(NULL, IDC_ARROW) : NULL);
+}
+
+bool window::process_event( UINT message, WPARAM wparam, LPARAM lparam, LRESULT& result)
+{
+	if (!hwnd_)
+	{
+		return false;
+	}
+
+	if (process_event_by_sink(message,wparam,lparam, result))
+	{
+		return true;
+	}
+
+	switch (message)
+	{
+	case WM_SIZE:
+		update_window_size();
+		if (event_handlers_.has("resize"))
 		{
-			update_window_size();
+			runtime::main_loop().schedule(boost::bind(&window::v8_process_resize, this, width_, height_));
+		}
+		break;
 
-			if(event_handlers_.has("resize"))
-				runtime::main_loop().schedule(boost::bind(&window::v8_process_resize, this, width_, height_));
-
-		} break;
-
-		case WM_DESTROY:
+	case WM_DESTROY:
+		if (drag_accept_files_enabled_)
 		{
-			if(drag_accept_files_enabled_)
-				DragAcceptFiles(*this, FALSE);
-		} break;
-
-		case WM_CLOSE:
+			DragAcceptFiles(hwnd_, FALSE);
+		}
+		break;
+	case WM_CLOSE:
+		if (style_ & GWS_APPWINDOW)
 		{
-/*			if(style_ & AWS_APPWINDOW)
-			{
-//				set_terminating();
-				PostQuitMessage(true);
-			}
-*/
-
-			if(event_handlers_.has("close"))
-				runtime::main_loop().schedule(boost::bind(&window::v8_process_event, this, std::string("close")));
-
-
-//			if(event_handlers_.has("close"))
-//				runtime::main_loop().schedule(boost::bind(&window::v8_process_event, this, (uint32_t)message, (uint32_t)wparam, (uint32_t)lparam));
-
-		} break;
-
-		case WM_MOUSEMOVE: 
-			{
-				boost::shared_ptr<input_event> e = boost::make_shared<input_event>("mousemove");//
-				e->cursor_.x = (double)LOWORD(lparam);
-				e->cursor_.y = (double)HIWORD(lparam);
-				runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
-			} break;
+			PostQuitMessage(0);
+		}
+		if (event_handlers_.has("close"))
+		{
+			runtime::main_loop().schedule(boost::bind(&window::v8_process_event, this, std::string("close")));
+		}
+		break;
+	case WM_MOUSEMOVE:
+		{
+			boost::shared_ptr<input_event> e = boost::make_shared<input_event>("mousemove");
+			e->cursor_.x = (double)LOWORD(lparam);
+			e->cursor_.y = (double)HIWORD(lparam);
+			runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
+		}
+		break;
 #if 0
-		case WM_LBUTTONDOWN: { delegate_->mouse_button(0,true); } break;
-		case WM_MBUTTONDOWN: { delegate_->mouse_button(1,true); } break;
-		case WM_RBUTTONDOWN: { delegate_->mouse_button(2,true); } break;
-		case WM_LBUTTONUP: { delegate_->mouse_button(0,false); } break;
-		case WM_MBUTTONUP: { delegate_->mouse_button(1,false); } break;
-		case WM_RBUTTONUP: { delegate_->mouse_button(2,false); } break;
+	case WM_LBUTTONDOWN: { delegate_->mouse_button(0,true); } break;
+	case WM_MBUTTONDOWN: { delegate_->mouse_button(1,true); } break;
+	case WM_RBUTTONDOWN: { delegate_->mouse_button(2,true); } break;
+	case WM_LBUTTONUP: { delegate_->mouse_button(0,false); } break;
+	case WM_MBUTTONUP: { delegate_->mouse_button(1,false); } break;
+	case WM_RBUTTONUP: { delegate_->mouse_button(2,false); } break;
 
-		case WM_LBUTTONDBLCLK: { delegate_->mouse_button(0,true,2);  delegate_->mouse_button(0,false,2); } break;
-		case WM_MBUTTONDBLCLK: { delegate_->mouse_button(1,true,2); delegate_->mouse_button(1,false,2); } break;
-		case WM_RBUTTONDBLCLK: { delegate_->mouse_button(2,true,2); delegate_->mouse_button(2,false,2); } break;
+	case WM_LBUTTONDBLCLK: { delegate_->mouse_button(0,true,2);  delegate_->mouse_button(0,false,2); } break;
+	case WM_MBUTTONDBLCLK: { delegate_->mouse_button(1,true,2); delegate_->mouse_button(1,false,2); } break;
+	case WM_RBUTTONDBLCLK: { delegate_->mouse_button(2,true,2); delegate_->mouse_button(2,false,2); } break;
 
-		case WM_MOUSEWHEEL:
-			{
-				signed short delta = HIWORD(wparam);
-				delegate_->mouse_wheel(0,delta);
-			} break;
+	case WM_MOUSEWHEEL:
+		{
+			signed short delta = HIWORD(wparam);
+			delegate_->mouse_wheel(0,delta);
+		} break;
 
-		case WM_MOUSEHWHEEL:
-			{
-				signed short delta = HIWORD(wparam);
-				delegate_->mouse_wheel(delta,0);
-			} break;
+	case WM_MOUSEHWHEEL:
+		{
+			signed short delta = HIWORD(wparam);
+			delegate_->mouse_wheel(delta,0);
+		} break;
 #endif
 
-		case WM_KEYUP:
+	case WM_KEYUP:
+		if (event_handlers_.has("keyup"))
+		{
+			boost::shared_ptr<input_event> e = boost::make_shared<input_event>("keyup");
+			e->vk_code_ = (uint32_t)wparam;
+			e->scancode_ = MapVirtualKey(e->vk_code_, MAPVK_VK_TO_VSC);
+			if (isalnum(e->vk_code_))
 			{
-				if(event_handlers_.has("keyup"))
-				{
-					boost::shared_ptr<input_event> e = boost::make_shared<input_event>("keyup");
-					e->vk_code_ = (uint32_t)wparam;
-					e->scancode_ = MapVirtualKey(e->vk_code_, MAPVK_VK_TO_VSC);
-					if(isalnum(e->vk_code_))
-					{
-						e->charcode_ = e->vk_code_;
-						e->char_[0] = (char)wparam;
-						e->char_[1] = 0;
-					}
-					runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
-				}
+				e->charcode_ = e->vk_code_;
+				e->char_[0] = (char)wparam;
+				e->char_[1] = 0;
+			}
+			runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
+		}
+		break;
 
-			} break;
-
-		case WM_KEYDOWN:
+	case WM_KEYDOWN:
+		if(event_handlers_.has("keydown"))
+		{
+			boost::shared_ptr<input_event> e = boost::make_shared<input_event>("keydown");
+			e->vk_code_ = (uint32_t)wparam;
+			e->scancode_ = MapVirtualKey(e->vk_code_, MAPVK_VK_TO_VSC);
+			if(isalnum(e->vk_code_))
 			{
-				if(event_handlers_.has("keydown"))
-				{
-					boost::shared_ptr<input_event> e = boost::make_shared<input_event>("keydown");
-					e->vk_code_ = (uint32_t)wparam;
-					e->scancode_ = MapVirtualKey(e->vk_code_, MAPVK_VK_TO_VSC);
-					if(isalnum(e->vk_code_))
-					{
-						e->charcode_ = e->vk_code_;
-						e->char_[0] = (char)wparam;
-						e->char_[1] = 0;
-					}
-					runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
-				}
+				e->charcode_ = e->vk_code_;
+				e->char_[0] = (char)wparam;
+				e->char_[1] = 0;
+			}
+			runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
+		}
+		break;
 
-			} break;
+	case WM_CHAR:
+		if (event_handlers_.has("char"))
+		{
+			boost::shared_ptr<input_event> e = boost::make_shared<input_event>("keydown");
+			e->charcode_ = (uint32_t)wparam;
+			e->char_[0] = (char)wparam;
+			e->char_[1] = 0;
+			// e->scancode_ = MapVirtualKey(e->vk_code_, MAPVK_VK_TO_VSC);
+			runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
+		}
+		break;
 
-		case WM_CHAR:
+	case WM_DROPFILES:
+		{
+			HDROP hDrop = (HDROP) wparam;
+			uint32_t const count = DragQueryFile(hDrop, (UINT)-1, NULL, NULL);
+			shared_wstrings files = boost::make_shared<wstrings>(count);
+			for (uint32_t i = 0; i < count; ++i)
 			{
-//				uint32_t code = wparam;
-//				std::string text;
-//				delegate_->text_event_2(code, text);
-				if(event_handlers_.has("char"))
-				{
-					boost::shared_ptr<input_event> e = boost::make_shared<input_event>("keydown");
-					e->charcode_ = (uint32_t)wparam;
-					e->char_[0] = (char)wparam;
-					e->char_[1] = 0;
-					// e->scancode_ = MapVirtualKey(e->vk_code_, MAPVK_VK_TO_VSC);
-					runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
-				}
+				std::wstring& file = (*files)[i];
+				size_t const len = DragQueryFile(hDrop, i, NULL, 0) + 1;
+				file.resize(len);
+				DragQueryFile(hDrop, i, &file[0], file.size());
+				if (file.back() == 0) file.pop_back();
+			}
+			DragFinish(hDrop);
+			runtime::main_loop().schedule(boost::bind(&window::drag_accept_files, this, files));
+		}
+		break;
 
-			} break;
+	case WM_SETCURSOR:
+		::SetCursor(cursor_);
+		result = TRUE;
+		return true;
 
+	case WM_PAINT:
+		if (splash_bitmap_)
+		{
+			HDC hdc = ::GetDC(hwnd_);
 
-		case WM_DROPFILES:
-			{
-					HDROP hDrop = (HDROP) wparam;
-					boost::shared_ptr<std::vector<std::string>> files = boost::make_shared<std::vector<std::string>>();
-					uint32_t count = DragQueryFile(hDrop, (UINT)-1, NULL, NULL);
-					for(uint32_t i = 0; i < count; i++)
-					{
-						char buffer[1024];
-						DragQueryFileA(hDrop,i,buffer,sizeof(buffer));
-						files->push_back(buffer);
-					}
-					DragFinish(hDrop);
-					runtime::main_loop().schedule(boost::bind(&window::drag_accept_files, this, files));
-					
-			} break;
+			BITMAPFILEHEADER const* bfh = (BITMAPFILEHEADER*)splash_bitmap_.get();
+			BITMAPINFO const* bmi = (BITMAPINFO*)(bfh + 1);
 
-		case WM_PAINT:
-			{
-//				PAINTSTRUCT ps;
+			void const* data = ((uint8_t*)bfh + bfh->bfOffBits);
 
-				if(splash_bitmap_.get())
-				{
-					HDC hdc = ::GetDC(*this);
+			::SetDIBitsToDevice(hdc, 0, 0, bmi->bmiHeader.biWidth, bmi->bmiHeader.biHeight,
+				0, 0, 0, bmi->bmiHeader.biHeight, data, bmi, DIB_RGB_COLORS);
 
-					BITMAPFILEHEADER *bfh = (BITMAPFILEHEADER *)splash_bitmap_.get();
-					
-					BITMAPINFO *bmi = (BITMAPINFO *)(bfh+1);
-
-					void *data = ((uint8_t*)bfh + bfh->bfOffBits);
-
-
-					::SetDIBitsToDevice(hdc,0,0,bmi->bmiHeader.biWidth,bmi->bmiHeader.biHeight,
-						0,0,
-						0,bmi->bmiHeader.biHeight,
-						data, bmi, DIB_RGB_COLORS);
-
-					::ReleaseDC(*this, hdc);
-				}
-
-
-			} break;
+			::ReleaseDC(hwnd_, hdc);
+			result = 0;
+			return true;
+		}
+		break;
 	}
 
-//	if(message_handlers_.has((uint32_t)message))
-	if(message_handling_enabled_)
-		runtime::main_loop().schedule(boost::bind(&window::v8_process_message, this, (uint32_t)message, (uint32_t)wparam, (uint32_t)lparam));
-}
-
-
-void window::use_as_splash_screen(std::string filename)
-{
-	if(!filename.length())
-		return;
-
-	FILE *fp = fopen(filename.c_str(), "rb");
-	if(!fp)
-		return;
-	fseek(fp,0,SEEK_END);
-	long len = ftell(fp);
-	fseek(fp,0,SEEK_SET);
-	if(!len)
+	if (message_handling_enabled_)
 	{
-		fclose(fp);
-		return;
+		runtime::main_loop().schedule(boost::bind(&window::v8_process_message, this,
+			(uint32_t)message, (uint32_t)wparam, (uint32_t)lparam));
+		return true;
 	}
-	splash_bitmap_.reset((uint8_t*)malloc(len));
-	fread(splash_bitmap_.get(),len,1,fp);
-	fclose(fp);
-
-	show_frame(false);
-
-	BITMAPFILEHEADER *bfh = (BITMAPFILEHEADER *)splash_bitmap_.get();
-	BITMAPINFO *bmi = (BITMAPINFO *)(bfh+1);
-	int width  = bmi->bmiHeader.biWidth;
-	int height = bmi->bmiHeader.biHeight;
-	int left   = (GetDeviceCaps(GetDC(NULL), HORZRES) - width)  / 2;
-	int top    = (GetDeviceCaps(GetDC(NULL), VERTRES) - height) / 2;
-
-	::SetWindowPos(*this,HWND_TOPMOST,left,top,width,height,SWP_SHOWWINDOW);
-	::InvalidateRect(*this,NULL,FALSE);
+	return false;
 }
 
-// void window::v8_process_event(std::string event)
-// {
-// 
-// }
+void window::use_as_splash_screen(std::wstring const& filename)
+{
+	if (filename.empty())
+	{
+		splash_bitmap_.reset();
+		show_frame(true);
+		::InvalidateRect(hwnd_, NULL, FALSE);
+	}
+	else
+	{
+		boost::filesystem::path const fn = filename;
+		boost::iostreams::mapped_file_source file(fn);
+		if (file.is_open())
+		{
+			splash_bitmap_.reset(new uint8_t[file.size()]);
+			memcpy(splash_bitmap_.get(), file.data(), file.size());
+		}
+		file.close();
+
+		show_frame(false);
+
+		BITMAPFILEHEADER const* bfh = (BITMAPFILEHEADER*)splash_bitmap_.get();
+		BITMAPINFO const* bmi = (BITMAPINFO*)(bfh+1);
+		int const width  = bmi->bmiHeader.biWidth;
+		int const height = bmi->bmiHeader.biHeight;
+		int const left   = (get_current_video_mode().width - width)  / 2;
+		int const top    = (get_current_video_mode().height - height) / 2;
+
+		::SetWindowPos(hwnd_, HWND_TOPMOST, left, top, width, height, SWP_SHOWWINDOW);
+		::InvalidateRect(hwnd_, NULL, FALSE);
+	}
+}
 
 void window::v8_process_message(uint32_t message, uint32_t wparam, uint32_t lparam)
 {
-	v8::Handle<v8::Value> args[3] = { convert::CastToJS(message), convert::CastToJS(wparam), convert::CastToJS(lparam) };
-	event_handlers_.call("message", convert::CastToJS(this)->ToObject(), 3, args);
+	v8::Handle<v8::Value> args[3] = { v8pp::to_v8(message), v8pp::to_v8(wparam), v8pp::to_v8(lparam) };
+	event_handlers_.call("message", v8pp::to_v8(this)->ToObject(), 3, args);
 }
 
 void window::v8_process_event(std::string const& type)
 {
-	event_handlers_.call(type, convert::CastToJS(this)->ToObject(), 0, NULL);
+	event_handlers_.call(type, v8pp::to_v8(this)->ToObject(), 0, NULL);
 }
 
 void window::v8_process_input_event(boost::shared_ptr<input_event> e)
 {
-	Handle<Object> o = Object::New();
+	HandleScope scope;
 
-	o->Set(String::New("type"), String::New(e->type_.c_str()));
+	Handle<Object> o = Object::New();
+	o->Set(v8pp::to_v8("type"), v8pp::to_v8(e->type_));
 
 	Handle<Object> modifiers = Object::New();
-	o->Set(String::New("modifiers"), modifiers);
-	modifiers->Set(String::New("ctrl"),  convert::BoolToJS(e->mod_ctrl_));
-	modifiers->Set(String::New("alt"),   convert::BoolToJS(e->mod_alt_));
-	modifiers->Set(String::New("shift"), convert::BoolToJS(e->mod_shift_));
-	modifiers->Set(String::New("lshift"), convert::BoolToJS(e->mod_lshift_));
-	modifiers->Set(String::New("rshift"), convert::BoolToJS(e->mod_rshift_));
+	o->Set(v8pp::to_v8("modifiers"), modifiers);
 
-	//uint32_t vk_code = wparam;
-	//uint32_t scancode = MapVirtualKey(vk_code, MAPVK_VK_TO_VSC);
+	modifiers->Set(v8pp::to_v8("ctrl"),   v8pp::to_v8(e->mod_ctrl_));
+	modifiers->Set(v8pp::to_v8("alt"),    v8pp::to_v8(e->mod_alt_));
+	modifiers->Set(v8pp::to_v8("shift"),  v8pp::to_v8(e->mod_shift_));
+	modifiers->Set(v8pp::to_v8("lshift"), v8pp::to_v8(e->mod_lshift_));
+	modifiers->Set(v8pp::to_v8("rshift"), v8pp::to_v8(e->mod_rshift_));
 
-	o->Set(String::New("vk_code"), convert::UInt32ToJS(e->vk_code_));
-	o->Set(String::New("scancode"), convert::UInt32ToJS(e->scancode_));
-	o->Set(String::New("charcode"), convert::UInt32ToJS(e->charcode_));
-	o->Set(String::New("char"), String::New(e->char_));
-
+	o->Set(v8pp::to_v8("vk_code"),  v8pp::to_v8(e->vk_code_));
+	o->Set(v8pp::to_v8("scancode"), v8pp::to_v8(e->scancode_));
+	o->Set(v8pp::to_v8("charcode"), v8pp::to_v8(e->charcode_));
+	o->Set(v8pp::to_v8("char"),     v8pp::to_v8(e->char_));
 
 	v8::Handle<v8::Value> args[1] = { o };
-	event_handlers_.call(e->type_, convert::CastToJS(this)->ToObject(), 1, args);
+	event_handlers_.call(e->type_, v8pp::to_v8(this)->ToObject(), 1, args);
 }
 
-void window::v8_process_resize(uint32_t w, uint32_t h)
+void window::v8_process_resize(uint32_t width, uint32_t height)
 {
+	HandleScope scope;
+
 	Handle<Object> o = Object::New();
-	o->Set(String::New("width"), convert::UInt32ToJS(w));
-	o->Set(String::New("height"), convert::UInt32ToJS(h));
+	o->Set(v8pp::to_v8("width"), v8pp::to_v8(width));
+	o->Set(v8pp::to_v8("height"), v8pp::to_v8(height));
 
 	v8::Handle<v8::Value> args[1] = { o };
-	event_handlers_.call("resize", convert::CastToJS(this)->ToObject(), 1, args);
+	event_handlers_.call("resize", v8pp::to_v8(this)->ToObject(), 1, args);
 }
 
 
 void window::show( bool visible )
 {
-	ShowWindow(*this,visible ? SW_SHOW : SW_HIDE);
+	::ShowWindow(hwnd_, visible? SW_SHOW : SW_HIDE);
 }
 
-void window::switch_to_fullscreen( const video_mode& mode )
+void window::switch_to_fullscreen(video_mode const& mode)
 {
 	DEVMODE DevMode;
 	DevMode.dmSize       = sizeof(DEVMODE);
@@ -569,16 +459,16 @@ void window::switch_to_fullscreen( const video_mode& mode )
 	}
 
 	// Change window style (no border, no titlebar, ...)
-	SetWindowLong(*this, GWL_STYLE,   WS_POPUP);
-	SetWindowLong(*this, GWL_EXSTYLE, WS_EX_APPWINDOW);
+	SetWindowLong(hwnd_, GWL_STYLE,   WS_POPUP);
+	SetWindowLong(hwnd_, GWL_EXSTYLE, WS_EX_APPWINDOW);
 
 	// And resize it so that it fits the entire screen
-	SetWindowPos(*this, HWND_TOP, 0, 0, mode.width, mode.height, SWP_FRAMECHANGED);
-	ShowWindow(*this, SW_SHOW);
+	SetWindowPos(hwnd_, HWND_TOP, 0, 0, mode.width, mode.height, SWP_FRAMECHANGED);
+	ShowWindow(hwnd_, SW_SHOW);
 
 	// SetPixelFormat can fail (really ?) if window style doesn't contain these flags
-	long style = GetWindowLong(*this, GWL_STYLE);
-	SetWindowLong(*this, GWL_STYLE, style | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
+	long style = GetWindowLong(hwnd_, GWL_STYLE);
+	SetWindowLong(hwnd_, GWL_STYLE, style | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
 
 	fullscreen_ = true;
 
@@ -591,16 +481,16 @@ void window::toggle_fullscreen(void)
 	if(fullscreen_)
 	{
 		WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_VISIBLE
-		SetWindowLong(*this, GWL_STYLE,   WS_POPUP);
-		SetWindowLong(*this, GWL_EXSTYLE, WS_EX_APPWINDOW);
+		SetWindowLong(hwnd_, GWL_STYLE,   WS_POPUP);
+		SetWindowLong(hwnd_, GWL_EXSTYLE, WS_EX_APPWINDOW);
 	}
 	else
 	{
 		// Change window style (no border, no titlebar, ...)
-		SetWindowLong(*this, GWL_STYLE,   WS_POPUP);
-		SetWindowLong(*this, GWL_EXSTYLE, WS_EX_APPWINDOW);
+		SetWindowLong(hwnd_, GWL_STYLE,   WS_POPUP);
+		SetWindowLong(hwnd_, GWL_EXSTYLE, WS_EX_APPWINDOW);
 
-		ShowWindow(*this,SW_MAXIMIZE);
+		ShowWindow(hwnd_,SW_MAXIMIZE);
 	}
 }
 */
@@ -609,31 +499,28 @@ void window::show_frame(bool show)
 {	
 	if(show)
 	{
-		SetWindowLong(*this, GWL_STYLE,   WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_VISIBLE);
-//		SetWindowLong(*this, GWL_EXSTYLE, WS_EX_APPWINDOW);
+		SetWindowLong(hwnd_, GWL_STYLE,   WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_VISIBLE);
+//		SetWindowLong(hwnd_, GWL_EXSTYLE, WS_EX_APPWINDOW);
 	}
 	else
 	{
-		SetWindowLong(*this, GWL_STYLE,   WS_POPUP | WS_CLIPCHILDREN | WS_VISIBLE);
-//		SetWindowLong(*this, GWL_EXSTYLE, WS_EX_APPWINDOW);
-//		SetWindowPos(*this, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOREPOSITION);
+		SetWindowLong(hwnd_, GWL_STYLE,   WS_POPUP | WS_CLIPCHILDREN | WS_VISIBLE);
+//		SetWindowLong(hwnd_, GWL_EXSTYLE, WS_EX_APPWINDOW);
+//		SetWindowPos(hwnd_, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOREPOSITION);
 	}
 
 	update_window_size();
 }
 
-void window::set_window_rect(uint32_t l, uint32_t t, uint32_t w, uint32_t h)
+void window::set_window_rect(uint32_t left, uint32_t top, uint32_t width, uint32_t height)
 {
-	SetWindowPos(*this, NULL, l, t, w, h, SWP_SHOWWINDOW);
+	SetWindowPos(hwnd_, NULL, left, top, width, height, SWP_SHOWWINDOW);
 	update_window_size();
 }
 
 void window::set_topmost(bool topmost)
 {
-	if(topmost)
-		SetWindowPos(*this, HWND_TOP, 0,0,0,0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOREPOSITION);
-	else
-		SetWindowPos(*this, NULL, 0,0,0,0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOREPOSITION);
+	SetWindowPos(hwnd_, topmost? HWND_TOP : NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOREPOSITION);
 }
 
 v8::Handle<v8::Value> window::get_window_rect( v8::Arguments const& )
@@ -643,12 +530,12 @@ v8::Handle<v8::Value> window::get_window_rect( v8::Arguments const& )
 	Handle<Object> o = Object::New();
 
 	RECT rc;
-	GetWindowRect(*this, &rc);
+	GetWindowRect(hwnd_, &rc);
 
-	o->Set(String::New("left"), convert::UInt32ToJS(rc.left));
-	o->Set(String::New("top"), convert::UInt32ToJS(rc.top));
-	o->Set(String::New("width"), convert::UInt32ToJS(rc.right-rc.left));
-	o->Set(String::New("height"), convert::UInt32ToJS(rc.bottom-rc.top));
+	o->Set(v8pp::to_v8("left"),   v8pp::to_v8(rc.left));
+	o->Set(v8pp::to_v8("top"),    v8pp::to_v8(rc.top));
+	o->Set(v8pp::to_v8("width"),  v8pp::to_v8(rc.right - rc.left));
+	o->Set(v8pp::to_v8("height"), v8pp::to_v8(rc.bottom - rc.top));
 
 	return scope.Close(o);
 }
@@ -660,67 +547,76 @@ v8::Handle<v8::Value> window::get_client_rect( v8::Arguments const& )
 	Handle<Object> o = Object::New();
 
 	RECT rc;
-	GetClientRect(*this, &rc);
+	GetClientRect(hwnd_, &rc);
 
-	o->Set(String::New("left"), convert::UInt32ToJS(rc.left));
-	o->Set(String::New("top"), convert::UInt32ToJS(rc.top));
-	o->Set(String::New("width"), convert::UInt32ToJS(rc.right-rc.left));
-	o->Set(String::New("height"), convert::UInt32ToJS(rc.bottom-rc.top));
+	o->Set(v8pp::to_v8("left"),   v8pp::to_v8(rc.left));
+	o->Set(v8pp::to_v8("top"),    v8pp::to_v8(rc.top));
+	o->Set(v8pp::to_v8("width"),  v8pp::to_v8(rc.right - rc.left));
+	o->Set(v8pp::to_v8("height"), v8pp::to_v8(rc.bottom - rc.top));
 
 	return scope.Close(o);
 }
 
-v8::Handle<v8::Value> window::on(std::string const& name, Handle<Value> fn)
+window& window::on(std::string const& name, Handle<Value> fn)
 {
-	if(name == "message")
+	if (name == "message")
+	{
 		message_handling_enabled_ = true;
+	}
+	else if (name == "drag_accept_files")
+	{
+		runtime::main_loop().schedule(boost::bind(&window::drag_accept_files_enable_impl, this, true));
+	}
 
-	if(name == "drag_accept_files")
-		runtime::main_loop().schedule(boost::bind(&window::drag_accept_files_enable_impl, this));
-
-	window_base::on(name,fn);
-	return convert::CastToJS(this);
+	event_handlers_.on(name, fn);
+	return *this;
 }
 
-v8::Handle<v8::Value> window::off(std::string const& name)
+window& window::off(std::string const& name)
 {
-	window_base::off(name);
-	return convert::CastToJS(this);
+	if (name == "message")
+	{
+		message_handling_enabled_ = false;
+	}
+	else if (name == "drag_accept_files")
+	{
+		runtime::main_loop().schedule(boost::bind(&window::drag_accept_files_enable_impl, this, false));
+	}
+
+	event_handlers_.off(name);
+	return *this;
 }
 
-void window::load_icon_from_file( std::string const& file)
+void window::load_icon_from_file(std::wstring const& file)
 {
-	runtime::main_loop().schedule(boost::bind(&window::load_icon_from_file_impl, this, file));
+	HANDLE hIcon = LoadImageW(NULL, file.c_str(), IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
+	if (hIcon)
+	{
+		PostMessage(hwnd_, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+		return;
+	}
+
+	hIcon = LoadImageW(NULL, file.c_str(), IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
+	if (hIcon)
+	{
+		PostMessage(hwnd_, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+	}
 }
 
-void window::load_icon_from_file_impl( std::string const& file)
+void window::drag_accept_files_enable_impl(bool enable)
 {
-	HANDLE hIcon = LoadImageA(NULL, file.c_str(), IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
-	if(hIcon)
-		SendMessage(*this, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
-
-	hIcon = LoadImageA(NULL, file.c_str(), IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
-	if(hIcon)
-		SendMessage(*this, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+	drag_accept_files_enabled_ = enable;
+	::DragAcceptFiles(hwnd_, enable);
 }
 
-void window::drag_accept_files_enable_impl(void)
+void window::drag_accept_files(shared_wstrings files)
 {
-	drag_accept_files_enabled_ = true;
-	DragAcceptFiles(*this,TRUE);
+	HandleScope scope;
+
+	v8::Handle<v8::Value> args[1] = { v8pp::to_v8(*files) };
+	event_handlers_.call("drag_accept_files", v8pp::to_v8(this)->ToObject(), 1, args);
 }
 
-void window::drag_accept_files(boost::shared_ptr<std::vector<std::string>> files)
-{
-
-	Handle<Array> list = Array::New(files->size());
-	for(size_t i = 0; i < files->size(); i++)
-		list->Set(i, String::New((*files)[i].c_str()));
-
-	v8::Handle<v8::Value> args[1] = { list };
-	event_handlers_.call("drag_accept_files", convert::CastToJS(this)->ToObject(), 1, args);
-}
-
-} } // namespace aspect::gui
+}} // namespace aspect::gui
 
 #endif // OS(WINDOWS)

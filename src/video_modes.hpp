@@ -1,30 +1,54 @@
 #ifndef __VIDEO_MODES_HPP__
 #define __VIDEO_MODES_HPP__
 
+#include <set>
+#include <tuple>
+#include <boost/operators.hpp>
+
 namespace aspect
 {
-	class OXYGEN_API video_mode
+
+struct OXYGEN_API video_mode : boost::totally_ordered<video_mode>
+{
+public:
+
+	unsigned width;
+	unsigned height;
+	unsigned bpp;
+
+	video_mode()
+		: width(0)
+		, height(0)
+		, bpp(0)
 	{
-		friend struct compare_modes;
+	}
 
-		public:
+	video_mode(unsigned width, unsigned height, unsigned bpp)
+		: width(width)
+		, height(height)
+		, bpp(bpp)
+	{
+	}
 
-			unsigned int width;
-			unsigned int height;
-			unsigned int bpp;
+	bool operator==(video_mode const& other) const
+	{
+		return width == other.width && height == other.height && bpp == other.bpp;
+	}
 
-			video_mode();
-			video_mode(unsigned int _width, unsigned int _height, unsigned int _bpp);
+	bool operator<(video_mode const& other) const
+	{
+		return std::tie(bpp, width, height) < std::tie(other.bpp, other.width, other.height);
+	}
 
-			bool operator == (const video_mode& other) const;
-			bool operator != (const video_mode& other) const;
+	bool is_valid() const;
+	bool is_current() const;
+};
 
-			bool is_valid() const;
-			bool is_current() const;
-	};
+typedef std::set<video_mode> video_modes;
 
-	void init_supported_video_modes(std::vector<video_mode>& modes);
-	video_mode get_current_video_mode(void);
+void init_supported_video_modes(video_modes& modes);
+
+video_mode get_current_video_mode();
 
 }
 

@@ -1,80 +1,35 @@
 #include "oxygen.hpp"
+#include "video_modes.hpp"
 
 #if OS(LINUX)
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrandr.h>
-
-//#include "window_base.hpp"
-//#include "window_xf86.hpp"
 #endif
 
-namespace aspect
-{
+namespace aspect {
 
-std::vector<video_mode> g_supoprted_video_modes;
-
-struct compare_modes
-{
-	bool operator ()(const video_mode& v1, const video_mode& v2) const
-	{
-		if (v1.bpp > v2.bpp)
-			return true;
-		else if (v1.bpp < v2.bpp)
-			return false;
-		else if (v1.width > v2.width)
-			return true;
-		else if (v1.width < v2.width)
-			return false;
-		else
-			return (v1.height > v2.height);
-	}
-};
-
-// ~~~
-
-video_mode::video_mode()
-	: width(0),
-	height(0),
-	bpp(0)
-{
-
-}
-
-video_mode::video_mode(unsigned int _width, unsigned int _height, unsigned int _bpp)
-	: width(_width), height(_height), bpp(_bpp)
-{
-
-}
-
-bool video_mode::operator == (const video_mode& other) const
-{
-	return (width == other.width) && (height == other.height) && (bpp == other.bpp);
-}
-
-bool video_mode::operator != (const video_mode& other) const
-{
-	return !(*this == other);
-}
+static video_modes modes_;
 
 bool video_mode::is_valid() const
 {
-	if(g_supoprted_video_modes.empty())
-		init_supported_video_modes(g_supoprted_video_modes);
+	if (modes_.empty())
+	{
+		init_supported_video_modes(modes_);
+	}
 
-	return std::find(g_supoprted_video_modes.begin(), g_supoprted_video_modes.end(), *this) != g_supoprted_video_modes.end();
+	return modes_.count(*this) != 0;
 }
 
-bool video_mode::is_current(void) const
+bool video_mode::is_current() const
 {
-	video_mode current = get_current_video_mode();
-	return *this == current;
+	return *this == get_current_video_mode();
 }
 
 //////////////////////////////////////////////////////////////////////////
 
 #if OS(WINDOWS)
 
-void init_supported_video_modes(std::vector<video_mode>& modes)
+void init_supported_video_modes(video_modes& modes)
 {
 	modes.clear();
 
@@ -83,17 +38,12 @@ void init_supported_video_modes(std::vector<video_mode>& modes)
 	Win32Mode.dmSize = sizeof(DEVMODE);
 	for (int Count = 0; EnumDisplaySettings(NULL, Count, &Win32Mode); ++Count)
 	{
-		video_mode mode(Win32Mode.dmPelsWidth, Win32Mode.dmPelsHeight, Win32Mode.dmBitsPerPel);
-
-		// add it only if it is not already in the array
-		if (std::find(modes.begin(), modes.end(), mode) == modes.end())
-			modes.push_back(mode);
+		video_mode const mode(Win32Mode.dmPelsWidth, Win32Mode.dmPelsHeight, Win32Mode.dmBitsPerPel);
+		modes.insert(mode);
 	}
-
-	std::sort(modes.begin(), modes.end(), compare_modes() );
 }
 
-video_mode get_current_video_mode(void)
+video_mode get_current_video_mode()
 {
 	DEVMODE Win32Mode;
 	Win32Mode.dmSize = sizeof(DEVMODE);
@@ -106,7 +56,7 @@ video_mode get_current_video_mode(void)
 
 #if OS(LINUX)
 
-void init_supported_video_modes(std::vector<video_mode>& modes)
+void init_supported_video_modes(video_modes& modes)
 {
     // First, clear array to fill
     modes.clear();
@@ -140,11 +90,8 @@ void init_supported_video_modes(std::vector<video_mode>& modes)
                         for (int j = 0; j < NbSizes; ++j)
                         {
                             // Convert to video_mode
-                            video_mode mode(Sizes[j].width, Sizes[j].height, Depths[i]);
-        
-                            // Add it only if it is not already in the array
-                            if (std::find(modes.begin(), modes.end(), mode) == modes.end())
-                                modes.push_back(mode);
+                            video_mode const mode(Sizes[j].width, Sizes[j].height, Depths[i]);
+                            modes.insert(mode);
                         }
                     }
                 }
@@ -170,7 +117,7 @@ void init_supported_video_modes(std::vector<video_mode>& modes)
 ////////////////////////////////////////////////////////////
 /// Get current desktop video mode
 ////////////////////////////////////////////////////////////
-video_mode get_current_video_mode(void)
+video_mode get_current_video_mode()
 {
     video_mode DesktopMode;
 
@@ -214,4 +161,4 @@ video_mode get_current_video_mode(void)
 
 #endif // OS(LINUX)
 
-} // namespace
+} // aspect
