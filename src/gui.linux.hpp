@@ -39,6 +39,10 @@ public:
 
 	void destroy();
 
+	operator Window&() { return window_; }
+
+	XVisualInfo& current_visual() { return current_visual_; }
+
 	uint32_t width() const { return width_; }
 	uint32_t height() const { return height_; }
 
