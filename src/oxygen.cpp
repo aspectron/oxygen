@@ -80,6 +80,8 @@ creation_args::creation_args(v8::Arguments const& args)
 		throw std::runtime_error("Window constructor requires configuration object as an argument");
 	}
 
+	left = max(get_option(options, "left", 0), 0);
+	top = max(get_option(options, "top", 0), 0);
 	width = min(get_option(options, "width", 640), 1024*10);
 	height = min(get_option(options, "height", 480), 1024*10);
 	bpp = get_option(options, "bpp", 32);
