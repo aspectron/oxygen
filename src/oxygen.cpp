@@ -12,6 +12,8 @@ Handle<Value> get_screen_size(Arguments const&)
 	video_mode const curr_mode = get_current_video_mode();
 
 	Handle<Object> o = Object::New();
+	o->Set(v8pp::to_v8("left"), v8pp::to_v8(0));
+	o->Set(v8pp::to_v8("top"), v8pp::to_v8(0));
 	o->Set(v8pp::to_v8("width"), v8pp::to_v8(curr_mode.width));
 	o->Set(v8pp::to_v8("height"), v8pp::to_v8(curr_mode.height));
 
