@@ -255,8 +255,8 @@ void window::create(creation_args const& args)
 	int const width = width_ = args.width;
 	int const height = height_ = args.height;
 
-	int const left = fullscreen? 0 : (DisplayWidth(g_display, g_screen)  - width) / 2;
-	int const top = fullscreen? 0 : (DisplayHeight(g_display, g_screen) - height) / 2;
+	int const left = fullscreen? 0 : args.left;
+	int const top = fullscreen? 0 : args.top;
 
 	// Switch to fullscreen if necessary
 	if (fullscreen)

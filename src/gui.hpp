@@ -15,7 +15,9 @@ enum window_style
 
 struct creation_args
 {
-	uint32_t left, top, width, height, bpp, style;
+	int32_t left, top;
+	uint32_t width, height;
+	uint32_t bpp, style;
 #if OS(WINDOWS)
 	std::wstring caption;
 	std::wstring splash;

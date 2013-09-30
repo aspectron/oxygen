@@ -64,10 +64,15 @@ void oxygen_uninstall(Handle<Value> library)
 }
 
 template<typename T>
-T get_option(Handle<Object> options, char const* name, T def_value)
+bool get_option(Handle<Object> options, char const* name, T& result)
 {
 	Handle<Value> value = options->Get(String::New(name));
-	return value.IsEmpty() || value == Undefined()? def_value : v8pp::from_v8<T>(value);
+	if (value.IsEmpty() || value == Undefined())
+	{
+		return false;
+	}
+	result = v8pp::from_v8<T>(value);
+	return true;
 }
 
 creation_args::creation_args(v8::Arguments const& args)
@@ -80,14 +85,28 @@ creation_args::creation_args(v8::Arguments const& args)
 		throw std::runtime_error("Window constructor requires configuration object as an argument");
 	}
 
-	left = max(get_option(options, "left", 0), 0);
-	top = max(get_option(options, "top", 0), 0);
-	width = min(get_option(options, "width", 640), 1024*10);
-	height = min(get_option(options, "height", 480), 1024*10);
-	bpp = get_option(options, "bpp", 32);
-	style = get_option(options, "style", GWS_TITLEBAR | GWS_RESIZE | GWS_CLOSE | GWS_APPWINDOW);
-	caption = get_option(options, "caption", caption);
-	splash = get_option(options, "splash", splash);
+	if (get_option(options, "width", width = 640))
+	{
+		width = min(width, 1024*10u);
+	}
+	if (get_option(options, "height", height = 480))
+	{
+		height = min(height, 1024*10u);
+	}
+
+	if (!get_option(options, "left", left))
+	{
+		left = max(int(get_current_video_mode().width - width) / 2, 0);
+	}
+	if (!get_option(options, "top", top))
+	{
+		top = max(int(get_current_video_mode().height - height) / 2, 0);
+	}
+
+	get_option(options, "bpp", bpp = 32);
+	get_option(options, "style", style = GWS_TITLEBAR | GWS_RESIZE | GWS_CLOSE | GWS_APPWINDOW);
+	get_option(options, "caption", caption);
+	get_option(options, "splash", splash);
 }
 
 }} // ::aspect::gui

@@ -119,8 +119,8 @@ void window::create(creation_args args)
 		window_style |= WS_OVERLAPPEDWINDOW;
 	}
 	RECT window_rect;
-	window_rect.left = (get_current_video_mode().width - args.width) / 2;
-	window_rect.top = (get_current_video_mode().height - args.height) / 2;
+	window_rect.left = args.left;
+	window_rect.top = args.top;
 	window_rect.right = window_rect.left + args.width;
 	window_rect.bottom = window_rect.top + args.height;
 
@@ -147,7 +147,7 @@ void window::create(creation_args args)
 	// Switch to fullscreen if requested
 	if ((style_ & GWS_FULLSCREEN))
 	{
-		video_mode mode(args.width, args.height, args.bpp);
+		video_mode const mode(args.width, args.height, args.bpp);
 		switch_to_fullscreen(mode);
 	}
 
