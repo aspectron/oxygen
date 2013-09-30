@@ -4,20 +4,6 @@ namespace aspect {  namespace gui {
 
 boost::scoped_ptr<oxygen_thread> oxygen_thread::global_;
 
-void event_sink::assoc(window_base*w)
-{
-	window_ = w;
-}
-
-void event_sink::unregister()
-{
-	if (window_)
-	{
-		window_->unregister_event_sink(*this);
-		window_ = nullptr;
-	}
-}
-
 class oxygen_thread::main_loop : boost::noncopyable
 {
 public:
@@ -147,23 +133,13 @@ void oxygen_thread::stop()
 }
 
 // ------------------------------------------------------------------
-void window_base::register_event_sink(event_sink& sink)
-{
-	event_sinks_.push_back(&sink);
-	sink.assoc(this);
-}
-
-void window_base::unregister_event_sink(event_sink& sink)
-{
-	event_sinks_.remove(&sink);
-}
 
 #if OS(WINDOWS)
 bool window_base::process_event_by_sink(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& result)
 {
 	for (event_sinks::iterator it = event_sinks_.begin(), end =event_sinks_.end(); it != end; ++it)
 	{
-		if ( (*it)->process_events(message,wparam,lparam, result))
+		if ( (*it)->process_events(message, wparam, lparam, result))
 		{
 			return true;
 		}

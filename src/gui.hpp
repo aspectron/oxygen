@@ -3,9 +3,6 @@
 
 namespace aspect { namespace gui {
 
-class window_base;
-class window;
-
 enum window_style
 {
 	GWS_NONE        = 0x00000000,
@@ -42,27 +39,6 @@ struct graphics_settings
 	unsigned int depth_bits;
 	unsigned int stencil_bits;
 	unsigned int antialiasing_level;
-};
-
-class OXYGEN_API event_sink
-{
-public:
-	event_sink()
-		: window_(nullptr)
-	{
-	}
-
-	virtual ~event_sink() {}
-
-#if OS(WINDOWS)
-	virtual bool process_events(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& result) = 0;
-#endif
-
-	void assoc(window_base* w);
-	void unregister();
-
-private:
-	window_base* window_;
 };
 
 class OXYGEN_API input_event
@@ -141,9 +117,8 @@ private:
 
 class OXYGEN_API window_base
 {
+	friend class event_sink;
 public:
-	void register_event_sink(event_sink& sink);
-	void unregister_event_sink(event_sink& sink);
 
 #if OS(WINDOWS)
 	bool process_event_by_sink(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& result);
@@ -152,6 +127,28 @@ public:
 private:
 	typedef std::list<event_sink*> event_sinks;
 	event_sinks event_sinks_;
+};
+
+class OXYGEN_API event_sink
+{
+public:
+	explicit event_sink(window_base& window)
+		: window_(window)
+	{
+		window_.event_sinks_.push_back(this);
+	}
+
+	virtual ~event_sink()
+	{
+		window_.event_sinks_.remove(this);
+	}
+
+#if OS(WINDOWS)
+	virtual bool process_events(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& result) = 0;
+#endif
+
+private:
+	window_base& window_;
 };
 
 }} // aspect::gui
