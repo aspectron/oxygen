@@ -11,13 +11,13 @@ Handle<Value> get_screen_size(Arguments const&)
 
 	video_mode const curr_mode = get_current_video_mode();
 
-	Handle<Object> o = Object::New();
-	o->Set(v8pp::to_v8("left"), v8pp::to_v8(0));
-	o->Set(v8pp::to_v8("top"), v8pp::to_v8(0));
-	o->Set(v8pp::to_v8("width"), v8pp::to_v8(curr_mode.width));
-	o->Set(v8pp::to_v8("height"), v8pp::to_v8(curr_mode.height));
+	Handle<Object> result = Object::New();
+	set_option(result, "left", 0);
+	set_option(result, "top", 0);
+	set_option(result, "width", curr_mode.width);
+	set_option(result, "height", curr_mode.height);
 
-	return scope.Close(o);
+	return scope.Close(result);
 }
 
 DECLARE_LIBRARY_ENTRYPOINTS(oxygen_install, oxygen_uninstall);
@@ -63,18 +63,6 @@ void oxygen_uninstall(Handle<Value> library)
 {
 	window::cleanup();
 	window::js_class::destroy_objects();
-}
-
-template<typename T>
-bool get_option(Handle<Object> options, char const* name, T& result)
-{
-	Handle<Value> value = options->Get(String::New(name));
-	if (value.IsEmpty() || value == Undefined())
-	{
-		return false;
-	}
-	result = v8pp::from_v8<T>(value);
-	return true;
 }
 
 creation_args::creation_args(v8::Arguments const& args)
