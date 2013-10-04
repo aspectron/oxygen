@@ -85,7 +85,7 @@ private:
 
 	boost::scoped_array<uint8_t> splash_bitmap_;
 
-	aspect::event_handler<std::string> event_handlers_;
+	event_handler<std::string> event_handlers_;
 };
 
 }} // aspect::gui

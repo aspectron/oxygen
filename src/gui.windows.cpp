@@ -407,21 +407,21 @@ void window::v8_process_input_event(boost::shared_ptr<input_event> e)
 	HandleScope scope;
 
 	Handle<Object> o = Object::New();
-	o->Set(v8pp::to_v8("type"), v8pp::to_v8(e->type_));
+	set_option(o, "type", e->type_);
 
 	Handle<Object> modifiers = Object::New();
-	o->Set(v8pp::to_v8("modifiers"), modifiers);
+	set_option(o, "modifiers", modifiers);
 
-	modifiers->Set(v8pp::to_v8("ctrl"),   v8pp::to_v8(e->mod_ctrl_));
-	modifiers->Set(v8pp::to_v8("alt"),    v8pp::to_v8(e->mod_alt_));
-	modifiers->Set(v8pp::to_v8("shift"),  v8pp::to_v8(e->mod_shift_));
-	modifiers->Set(v8pp::to_v8("lshift"), v8pp::to_v8(e->mod_lshift_));
-	modifiers->Set(v8pp::to_v8("rshift"), v8pp::to_v8(e->mod_rshift_));
+	set_option(modifiers, "ctrl",   e->mod_ctrl_);
+	set_option(modifiers, "alt",    e->mod_alt_);
+	set_option(modifiers, "shift",  e->mod_shift_);
+	set_option(modifiers, "lshift", e->mod_lshift_);
+	set_option(modifiers, "rshift", e->mod_rshift_);
 
-	o->Set(v8pp::to_v8("vk_code"),  v8pp::to_v8(e->vk_code_));
-	o->Set(v8pp::to_v8("scancode"), v8pp::to_v8(e->scancode_));
-	o->Set(v8pp::to_v8("charcode"), v8pp::to_v8(e->charcode_));
-	o->Set(v8pp::to_v8("char"),     v8pp::to_v8(e->char_));
+	set_option(o, "vk_code",  e->vk_code_);
+	set_option(o, "scancode", e->scancode_);
+	set_option(o, "charcode", e->charcode_);
+	set_option(o, "char",     e->char_);
 
 	v8::Handle<v8::Value> args[1] = { o };
 	event_handlers_.call(e->type_, v8pp::to_v8(this)->ToObject(), 1, args);
@@ -432,8 +432,8 @@ void window::v8_process_resize(uint32_t width, uint32_t height)
 	HandleScope scope;
 
 	Handle<Object> o = Object::New();
-	o->Set(v8pp::to_v8("width"), v8pp::to_v8(width));
-	o->Set(v8pp::to_v8("height"), v8pp::to_v8(height));
+	set_option(o, "width", width);
+	set_option(o, "height", height);
 
 	v8::Handle<v8::Value> args[1] = { o };
 	event_handlers_.call("resize", v8pp::to_v8(this)->ToObject(), 1, args);
@@ -535,10 +535,10 @@ v8::Handle<v8::Value> window::get_window_rect( v8::Arguments const& )
 	RECT rc;
 	GetWindowRect(hwnd_, &rc);
 
-	o->Set(v8pp::to_v8("left"),   v8pp::to_v8(rc.left));
-	o->Set(v8pp::to_v8("top"),    v8pp::to_v8(rc.top));
-	o->Set(v8pp::to_v8("width"),  v8pp::to_v8(rc.right - rc.left));
-	o->Set(v8pp::to_v8("height"), v8pp::to_v8(rc.bottom - rc.top));
+	set_option(o, "left",   rc.left);
+	set_option(o, "top",    rc.top);
+	set_option(o, "width",  rc.right - rc.left);
+	set_option(o, "height", rc.bottom - rc.top);
 
 	return scope.Close(o);
 }
@@ -552,10 +552,10 @@ v8::Handle<v8::Value> window::get_client_rect( v8::Arguments const& )
 	RECT rc;
 	GetClientRect(hwnd_, &rc);
 
-	o->Set(v8pp::to_v8("left"),   v8pp::to_v8(rc.left));
-	o->Set(v8pp::to_v8("top"),    v8pp::to_v8(rc.top));
-	o->Set(v8pp::to_v8("width"),  v8pp::to_v8(rc.right - rc.left));
-	o->Set(v8pp::to_v8("height"), v8pp::to_v8(rc.bottom - rc.top));
+	set_option(o, "left",   rc.left);
+	set_option(o, "top",    rc.top);
+	set_option(o, "width",  rc.right - rc.left);
+	set_option(o, "height", rc.bottom - rc.top);
 
 	return scope.Close(o);
 }
