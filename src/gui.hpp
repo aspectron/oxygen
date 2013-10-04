@@ -43,44 +43,44 @@ struct graphics_settings
 	unsigned int antialiasing_level;
 };
 
-class OXYGEN_API input_event
+struct OXYGEN_API input_event
 {
-public:
+	std::string type;
+	math::vec2 cursor;
+	uint32_t vk_code;
+	uint32_t scancode;
+	uint32_t charcode;
+	char char_[2];
 
-	input_event(std::string const& type)
-		: type_(type)
-	{
-		init();
-	}
+	bool mod_ctrl;
+	bool mod_alt;
+	bool mod_rshift;
+	bool mod_lshift;
+	bool mod_shift;
 
-	void init()
+	explicit input_event(std::string const& type)
+		: type(type)
+		, cursor(0, 0)
+		, vk_code(0)
+		, scancode(0)
+		, charcode(0)
+		, char_()
+		, mod_ctrl(false)
+		, mod_alt(false)
+		, mod_rshift(false)
+		, mod_lshift(false)
+		, mod_shift(false)
 	{
 #if OS(WINDOWS)
-		vk_code_ = 0; scancode_ = charcode_ = 0;
-		char_[0] = char_[1] = 0;
-		mod_ctrl_ = HIWORD(GetAsyncKeyState(VK_CONTROL)) ? true : false;
-		mod_alt_ =  HIWORD(GetAsyncKeyState(VK_MENU)) ? true : false;
-		mod_lshift_ = HIWORD(GetAsyncKeyState(VK_SHIFT)) ? true : false;
-		mod_rshift_ = HIWORD(GetAsyncKeyState(VK_LSHIFT)) ? true : false;
-		mod_shift_ = mod_lshift_ || mod_rshift_;
+		mod_ctrl = HIWORD(GetAsyncKeyState(VK_CONTROL)) != 0;
+		mod_alt =  HIWORD(GetAsyncKeyState(VK_MENU)) != 0;
+		mod_lshift = HIWORD(GetAsyncKeyState(VK_SHIFT)) != 0;
+		mod_rshift = HIWORD(GetAsyncKeyState(VK_LSHIFT)) != 0;
+		mod_shift = mod_lshift || mod_rshift;
 #else
 		// todo-linux
 #endif
 	}
-
-	std::string type_;
-	math::vec2 cursor_;
-	uint32_t vk_code_;
-	uint32_t scancode_;
-	uint32_t charcode_;
-	char char_[2];
-
-	bool mod_ctrl_;
-	bool mod_alt_;
-	bool mod_rshift_;
-	bool mod_lshift_;
-	bool mod_shift_;
-
 };
 
 class OXYGEN_API oxygen_thread

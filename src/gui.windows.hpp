@@ -68,7 +68,7 @@ private:
 private:
 	// handlers in V8 thread
 	void v8_process_message(uint32_t message, uint32_t wparam, uint32_t lparam);
-	void v8_process_input_event(boost::shared_ptr<input_event> e);
+	void v8_process_input_event(input_event e);
 	void v8_process_event(std::string const& type);
 	void v8_process_resize(uint32_t width, uint32_t height);
 

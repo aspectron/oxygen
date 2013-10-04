@@ -231,9 +231,9 @@ bool window::process_event( UINT message, WPARAM wparam, LPARAM lparam, LRESULT&
 		break;
 	case WM_MOUSEMOVE:
 		{
-			boost::shared_ptr<input_event> e = boost::make_shared<input_event>("mousemove");
-			e->cursor_.x = (double)LOWORD(lparam);
-			e->cursor_.y = (double)HIWORD(lparam);
+			input_event e("mousemove");
+			e.cursor.x = LOWORD(lparam);
+			e.cursor.y = HIWORD(lparam);
 			runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
 		}
 		break;
@@ -263,45 +263,33 @@ bool window::process_event( UINT message, WPARAM wparam, LPARAM lparam, LRESULT&
 #endif
 
 	case WM_KEYUP:
-		if (event_handlers_.has("keyup"))
-		{
-			boost::shared_ptr<input_event> e = boost::make_shared<input_event>("keyup");
-			e->vk_code_ = (uint32_t)wparam;
-			e->scancode_ = MapVirtualKey(e->vk_code_, MAPVK_VK_TO_VSC);
-			if (isalnum(e->vk_code_))
-			{
-				e->charcode_ = e->vk_code_;
-				e->char_[0] = (char)wparam;
-				e->char_[1] = 0;
-			}
-			runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
-		}
-		break;
-
 	case WM_KEYDOWN:
-		if(event_handlers_.has("keydown"))
 		{
-			boost::shared_ptr<input_event> e = boost::make_shared<input_event>("keydown");
-			e->vk_code_ = (uint32_t)wparam;
-			e->scancode_ = MapVirtualKey(e->vk_code_, MAPVK_VK_TO_VSC);
-			if(isalnum(e->vk_code_))
+			input_event e(message == WM_KEYUP? "keyup" : "keydown");
+
+			if (event_handlers_.has(e.type))
 			{
-				e->charcode_ = e->vk_code_;
-				e->char_[0] = (char)wparam;
-				e->char_[1] = 0;
+				e.vk_code = (uint32_t)wparam;
+				e.scancode = MapVirtualKey(e.vk_code, MAPVK_VK_TO_VSC);
+				if (isalnum(e.vk_code))
+				{
+					e.charcode = e.vk_code;
+					e.char_[0] = (char)wparam;
+					e.char_[1] = 0;
+				}
+				runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
 			}
-			runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
 		}
 		break;
 
 	case WM_CHAR:
 		if (event_handlers_.has("char"))
 		{
-			boost::shared_ptr<input_event> e = boost::make_shared<input_event>("keydown");
-			e->charcode_ = (uint32_t)wparam;
-			e->char_[0] = (char)wparam;
-			e->char_[1] = 0;
-			// e->scancode_ = MapVirtualKey(e->vk_code_, MAPVK_VK_TO_VSC);
+			input_event e("char");
+			e.charcode = (uint32_t)wparam;
+			e.char_[0] = (char)wparam;
+			e.char_[1] = 0;
+			// e.scancode = MapVirtualKey(e.vk_code, MAPVK_VK_TO_VSC);
 			runtime::main_loop().schedule(boost::bind(&window::v8_process_input_event, this, e));
 		}
 		break;
@@ -402,29 +390,29 @@ void window::v8_process_event(std::string const& type)
 	event_handlers_.call(type, v8pp::to_v8(this)->ToObject(), 0, NULL);
 }
 
-void window::v8_process_input_event(boost::shared_ptr<input_event> e)
+void window::v8_process_input_event(input_event const e)
 {
 	HandleScope scope;
 
 	Handle<Object> o = Object::New();
-	set_option(o, "type", e->type_);
+	set_option(o, "type", e.type);
 
 	Handle<Object> modifiers = Object::New();
 	set_option(o, "modifiers", modifiers);
 
-	set_option(modifiers, "ctrl",   e->mod_ctrl_);
-	set_option(modifiers, "alt",    e->mod_alt_);
-	set_option(modifiers, "shift",  e->mod_shift_);
-	set_option(modifiers, "lshift", e->mod_lshift_);
-	set_option(modifiers, "rshift", e->mod_rshift_);
+	set_option(modifiers, "ctrl",   e.mod_ctrl);
+	set_option(modifiers, "alt",    e.mod_alt);
+	set_option(modifiers, "shift",  e.mod_shift);
+	set_option(modifiers, "lshift", e.mod_lshift);
+	set_option(modifiers, "rshift", e.mod_rshift);
 
-	set_option(o, "vk_code",  e->vk_code_);
-	set_option(o, "scancode", e->scancode_);
-	set_option(o, "charcode", e->charcode_);
-	set_option(o, "char",     e->char_);
+	set_option(o, "vk_code",  e.vk_code);
+	set_option(o, "scancode", e.scancode);
+	set_option(o, "charcode", e.charcode);
+	set_option(o, "char",     e.char_);
 
 	v8::Handle<v8::Value> args[1] = { o };
-	event_handlers_.call(e->type_, v8pp::to_v8(this)->ToObject(), 1, args);
+	event_handlers_.call(e.type, v8pp::to_v8(this)->ToObject(), 1, args);
 }
 
 void window::v8_process_resize(uint32_t width, uint32_t height)
