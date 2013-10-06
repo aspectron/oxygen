@@ -61,42 +61,8 @@ Handle<Value> oxygen_install()
 
 void oxygen_uninstall(Handle<Value> library)
 {
-	window::cleanup();
 	window::js_class::destroy_objects();
-}
-
-creation_args::creation_args(v8::Arguments const& args)
-{
-	HandleScope scope;
-
-	Handle<Object> options = args[0]->ToObject();
-	if (options.IsEmpty())
-	{
-		throw std::runtime_error("Window constructor requires configuration object as an argument");
-	}
-
-	if (get_option(options, "width", width = 640))
-	{
-		width = min(width, 1024*10u);
-	}
-	if (get_option(options, "height", height = 480))
-	{
-		height = min(height, 1024*10u);
-	}
-
-	if (!get_option(options, "left", left))
-	{
-		left = max(int(get_current_video_mode().width - width) / 2, 0);
-	}
-	if (!get_option(options, "top", top))
-	{
-		top = max(int(get_current_video_mode().height - height) / 2, 0);
-	}
-
-	get_option(options, "bpp", bpp = 32);
-	get_option(options, "style", style = GWS_TITLEBAR | GWS_RESIZE | GWS_CLOSE | GWS_APPWINDOW);
-	get_option(options, "caption", caption);
-	get_option(options, "splash", splash);
+	window::cleanup();
 }
 
 }} // ::aspect::gui

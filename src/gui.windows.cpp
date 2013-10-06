@@ -10,10 +10,16 @@ namespace aspect { namespace gui {
 
 static wchar_t const WINDOW_CLASS_NAME[] = L"jsx_generic";
 
+static boost::thread window_thread_;
+
+void post_thread_message(UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	DWORD const thread_id = ::GetThreadId(window_thread_.native_handle());
+	::PostThreadMessage(thread_id, msg, wParam, lParam);
+}
+
 void window::init()
 {
-	HINSTANCE hinstance = (HINSTANCE)GetModuleHandle(NULL);
-
 	WNDCLASSW wc = {}; // window's class struct
 
 	// we must specify the attribs for the window's class
@@ -21,7 +27,7 @@ void window::init()
 	wc.lpfnWndProc		= window::window_proc;					// window procedure to use
 	wc.cbClsExtra		= 0;								// no extra data
 	wc.cbWndExtra		= 0;								// no extra data
-	wc.hInstance		= hinstance;						// associated instance
+	wc.hInstance		= (HINSTANCE)GetModuleHandle(NULL);						// associated instance
 	wc.hIcon			= NULL;								// use default icon temporarily
 	wc.hCursor			= LoadCursor(NULL, IDC_ARROW);		// use default cursor (Windows owns it, so don't unload)
 	wc.hbrBackground	= (HBRUSH)GetStockObject(BLACK_BRUSH);// background brush (don't destroy, let windows handle it)
@@ -33,21 +39,47 @@ void window::init()
 	// now, we can register this class
 	RegisterClassW(&wc);
 
-	oxygen_thread::start();
+	window_thread_ = boost::thread(&window::message_loop);
 }
 
 void window::cleanup()
 {
-	oxygen_thread::stop();
+	post_thread_message(WM_USER, 0, 0);
+	window_thread_.join();
+	
+	UnregisterClassW(WINDOW_CLASS_NAME, NULL);
 }
 
-void window::process_windows_events()
+void window::message_loop()
 {
 	MSG msg;
-	while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+
+	// to create a message queue in this thread
+	::PeekMessage(&msg, NULL, WM_USER, WM_USER, PM_NOREMOVE);
+
+	while (::GetMessage(&msg, NULL, 0, 0) >= 0)
 	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
+		if (!msg.hwnd && msg.message == WM_USER)
+		{
+			// msg for the thread
+			if (msg.wParam && msg.lParam)
+			{
+				window* w = reinterpret_cast<window*>(msg.wParam);
+				creation_args const* args = reinterpret_cast<creation_args const*>(msg.lParam);
+
+				w->create(*args);
+			}
+			else
+			{
+				// stop the thread
+				return;
+			}
+		}
+		else
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
 	}
 }
 
@@ -90,7 +122,10 @@ window::window(Arguments const& v8_args)
 	, drag_accept_files_enabled_(false)
 {
 	creation_args const args(v8_args);
-	oxygen_thread::schedule(boost::bind(&window::create, this, args));
+
+	post_thread_message(WM_USER, (WPARAM)this, (LPARAM)&args);
+
+	// wait for the window create completion
 	while (!hwnd_)
 	{
 		boost::this_thread::yield();

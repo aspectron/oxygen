@@ -15,7 +15,6 @@ public:
 
 	static void init();
 	static void cleanup();
-	static void process_windows_events();
 
 	explicit window(v8::Arguments const& args);
 	~window() { destroy(); }
@@ -43,16 +42,9 @@ public:
 	void show(bool visible);
 	void switch_to_fullscreen(video_mode const& mode);
 
-/*
-	void get_size(uint32_t* width, uint32_t* height)
-	{
-		*width = width_;
-		*height = height_;
-	}
-*/
-
 private:
 // handlers in the window thread
+	static void message_loop();
 	static LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
 
 	void create(creation_args args);
@@ -73,7 +65,7 @@ private:
 	void v8_process_resize(uint32_t width, uint32_t height);
 
 private:
-	boost::atomic<HWND> hwnd_;
+	HWND hwnd_;
 
 	uint32_t width_, height_;
 	unsigned style_;

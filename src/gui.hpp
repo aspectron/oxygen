@@ -83,40 +83,6 @@ struct OXYGEN_API input_event
 	}
 };
 
-class OXYGEN_API oxygen_thread
-{
-public:
-
-	/// Callback function to schedule in Berkelium
-	typedef boost::function<void ()> callback;
-
-	/// Schedule function call in the windows thread
-	static bool schedule(callback cb);
-
-	// Check that caller in the windows thread
-	static bool is_window_thread()
-	{
-		return boost::this_thread::get_id() == global_->thread_.get_id();
-	}
-
-	static void start();
-	static void stop();
-
-	~oxygen_thread();
-private:
-	oxygen_thread();
-
-	boost::thread thread_;
-
-	class main_loop;
-	boost::scoped_ptr<main_loop> main_loop_;
-
-	boost::scoped_ptr<async_queue> task_queue_;
-
-	static boost::scoped_ptr<oxygen_thread> global_;
-
-};
-
 class OXYGEN_API window_base
 {
 	friend class event_sink;
