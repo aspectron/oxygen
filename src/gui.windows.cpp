@@ -112,16 +112,14 @@ LRESULT CALLBACK window::window_proc(HWND hwnd, UINT message, WPARAM wparam, LPA
 	return proceed? result : ::DefWindowProc(hwnd, message, wparam, lparam);
 }
 
-window::window(Arguments const& v8_args)
-	: hwnd_(NULL)
-	, width_(0)
-	, height_(0)
-	, cursor_(LoadCursor(NULL, IDC_ARROW))
-	, fullscreen_(false)
-	, message_handling_enabled_(false)
-	, drag_accept_files_enabled_(false)
+void window::init(creation_args const& args)
 {
-	creation_args const args(v8_args);
+	hwnd_ = nullptr;
+	width_ = height_ = 0;
+	cursor_ = LoadCursor(NULL, IDC_ARROW);
+	fullscreen_ = false;
+	message_handling_enabled_ = false;
+	drag_accept_files_enabled_ = false;
 
 	post_thread_message(WM_USER, (WPARAM)this, (LPARAM)&args);
 
@@ -165,7 +163,7 @@ void window::create(creation_args args)
 		AdjustWindowRect(&window_rect, window_style, false);
 	}
 
-	if (args.splash.empty())
+	if (args.splash.empty() && (args.style & GWS_HIDDEN) == 0)
 	{
 		window_style |= WS_VISIBLE;
 	}
@@ -258,65 +256,26 @@ bool window::process_event( UINT message, WPARAM wparam, LPARAM lparam, LRESULT&
 		}
 		on_event("close");
 		break;
+
 	case WM_MOUSEMOVE:
-		{
-			input_event e("mousemove");
-			e.cursor.x = LOWORD(lparam);
-			e.cursor.y = HIWORD(lparam);
-			on_input(e);
-		}
-		break;
-#if 0
-	case WM_LBUTTONDOWN: { delegate_->mouse_button(0,true); } break;
-	case WM_MBUTTONDOWN: { delegate_->mouse_button(1,true); } break;
-	case WM_RBUTTONDOWN: { delegate_->mouse_button(2,true); } break;
-	case WM_LBUTTONUP: { delegate_->mouse_button(0,false); } break;
-	case WM_MBUTTONUP: { delegate_->mouse_button(1,false); } break;
-	case WM_RBUTTONUP: { delegate_->mouse_button(2,false); } break;
-
-	case WM_LBUTTONDBLCLK: { delegate_->mouse_button(0,true,2);  delegate_->mouse_button(0,false,2); } break;
-	case WM_MBUTTONDBLCLK: { delegate_->mouse_button(1,true,2); delegate_->mouse_button(1,false,2); } break;
-	case WM_RBUTTONDBLCLK: { delegate_->mouse_button(2,true,2); delegate_->mouse_button(2,false,2); } break;
-
+	case WM_LBUTTONDOWN:
+	case WM_MBUTTONDOWN:
+	case WM_RBUTTONDOWN:
+	case WM_XBUTTONDOWN:
+	case WM_LBUTTONUP:
+	case WM_MBUTTONUP:
+	case WM_RBUTTONUP:
+	case WM_XBUTTONUP:
+	case WM_LBUTTONDBLCLK:
+	case WM_MBUTTONDBLCLK:
+	case WM_RBUTTONDBLCLK:
+	case WM_XBUTTONDBLCLK:
 	case WM_MOUSEWHEEL:
-		{
-			signed short delta = HIWORD(wparam);
-			delegate_->mouse_wheel(0,delta);
-		} break;
-
 	case WM_MOUSEHWHEEL:
-		{
-			signed short delta = HIWORD(wparam);
-			delegate_->mouse_wheel(delta,0);
-		} break;
-#endif
-
 	case WM_KEYUP:
 	case WM_KEYDOWN:
-		{
-			input_event e(message == WM_KEYUP? "keyup" : "keydown");
-
-			e.vk_code = (uint32_t)wparam;
-			e.scancode = MapVirtualKey(e.vk_code, MAPVK_VK_TO_VSC);
-			if (isalnum(e.vk_code))
-			{
-				e.charcode = e.vk_code;
-				e.char_[0] = (char)wparam;
-				e.char_[1] = 0;
-			}
-			on_input(e);
-		}
-		break;
-
 	case WM_CHAR:
-		if (event_handlers_.has("char"))
-		{
-			input_event e("char");
-			e.charcode = (uint32_t)wparam;
-			e.char_[0] = (char)wparam;
-			e.char_[1] = 0;
-			on_input(e);
-		}
+		on_input(input_event(message, wparam, lparam));
 		break;
 
 	case WM_DROPFILES:
@@ -360,6 +319,11 @@ bool window::process_event( UINT message, WPARAM wparam, LPARAM lparam, LRESULT&
 			return true;
 		}
 		break;
+	}
+
+	if (process_event_by_sink(message, wparam, lparam, result))
+	{
+		return true;
 	}
 
 	if (message_handling_enabled_)
@@ -467,6 +431,12 @@ void window::toggle_fullscreen(void)
 	}
 }
 */
+
+void window::set_focus()
+{
+	::SetForegroundWindow(hwnd_);
+	::SetFocus(hwnd_);
+}
 
 void window::show_frame(bool show)
 {	
@@ -588,6 +558,132 @@ void window::drag_accept_files(shared_wstrings files)
 
 	v8::Handle<v8::Value> args[1] = { v8pp::to_v8(*files) };
 	event_handlers_.call("drag_accept_files", v8pp::to_v8(this)->ToObject(), 1, args);
+}
+
+input_event::input_event(UINT message, WPARAM wparam, LPARAM lparam)
+	: type_and_state_(UNKNOWN)
+{
+	if (message >= WM_MOUSEFIRST && message <= WM_MOUSELAST)
+	{
+		type_and_state_ = mouse_type_and_state(message, wparam);
+		data_.mouse.x = (int)LOWORD(lparam);
+		data_.mouse.y = (int)HIWORD(lparam);
+		data_.mouse.dx = (message == WM_MOUSEWHEEL? 0 : GET_WHEEL_DELTA_WPARAM(wparam));
+		data_.mouse.dy = (message == WM_MOUSEHWHEEL? 0 : GET_WHEEL_DELTA_WPARAM(wparam));
+		repeats_ = (type() == MOUSE_CLICK? 2 : 0);
+	}
+	else if (message >= WM_KEYDOWN && message <= WM_CHAR)
+	{
+		type_and_state_ = key_type_and_state(message);
+		data_.key.vk_code = wparam;
+		data_.key.scancode = (lparam >> 16) & 0xFF;
+		repeats_ = LOWORD(lparam);
+	}
+}
+
+uint32_t input_event::mouse_type_and_state(UINT message, WPARAM wparam)
+{
+	uint32_t result = 0;
+
+	// type and button
+	switch (message)
+	{
+	case WM_MOUSEMOVE:
+		result = MOUSE_MOVE;
+		break;
+	case WM_MOUSEWHEEL:
+	case WM_MOUSEHWHEEL:
+		result = MOUSE_WHEEL;
+		break;
+	case WM_LBUTTONDOWN:
+		result = MOUSE_DOWN | (1 << BUTTON_SHIFT);
+		break;
+	case WM_MBUTTONDOWN:
+		result = MOUSE_DOWN | (2 << BUTTON_SHIFT);
+		break;
+	case WM_RBUTTONDOWN:
+		result = MOUSE_DOWN | (3 << BUTTON_SHIFT);
+		break;
+	case WM_XBUTTONDOWN:
+		result = MOUSE_DOWN | ((3 + HIWORD(wparam)) << BUTTON_SHIFT);
+		break;
+	case WM_LBUTTONUP:
+		result = MOUSE_UP | (1 << BUTTON_SHIFT);
+		break;
+	case WM_MBUTTONUP:
+		result = MOUSE_UP | (2 << BUTTON_SHIFT);
+		break;
+	case WM_RBUTTONUP:
+		result = MOUSE_UP | (3 << BUTTON_SHIFT);
+		break;
+	case WM_XBUTTONUP:
+		result = MOUSE_UP | ((3 + HIWORD(wparam)) << BUTTON_SHIFT);
+		break;
+	case WM_LBUTTONDBLCLK:
+		result = MOUSE_CLICK | (1 << BUTTON_SHIFT);
+		break;
+	case WM_MBUTTONDBLCLK:
+		result = MOUSE_CLICK | (2 << BUTTON_SHIFT);
+		break;
+	case WM_RBUTTONDBLCLK:
+		result = MOUSE_CLICK | (3 << BUTTON_SHIFT);
+		break;
+	case WM_XBUTTONDBLCLK:
+		result = MOUSE_CLICK | ((3 + HIWORD(wparam)) << BUTTON_SHIFT);
+		break;
+	default:
+		_aspect_assert(false && "unknown mouse message");
+		result = UNKNOWN;
+		break;
+	}
+
+	// state
+	wparam = GET_KEYSTATE_WPARAM(wparam);
+	result |= (wparam & MK_CONTROL? CTRL_DOWN : 0);
+	result |= (HIWORD(GetKeyState(VK_MENU))? ALT_DOWN : 0);
+	result |= (wparam & MK_SHIFT? SHIFT_DOWN : 0);
+	result |= (wparam & MK_LBUTTON? LBUTTON_DOWN : 0);
+	result |= (wparam & MK_MBUTTON? MBUTTON_DOWN : 0);
+	result |= (wparam & MK_RBUTTON? RBUTTON_DOWN : 0);
+	result |= (wparam & MK_XBUTTON1? XBUTTON1_DOWN : 0);
+	result |= (wparam & MK_XBUTTON2? XBUTTON2_DOWN : 0);
+
+	return result;
+}
+
+uint32_t input_event::key_type_and_state(UINT message)
+{
+	uint32_t result = 0;
+
+	// type
+	switch (message)
+	{
+	case WM_KEYDOWN:
+		result = KEY_DOWN;
+		break;
+	case WM_KEYUP:
+		result = KEY_UP;
+		break;
+	case WM_CHAR:
+		result = KEY_CHAR;
+		break;
+	default:
+		_aspect_assert(false && "unknown key message");
+		result = UNKNOWN;
+		break;
+	}
+
+	// state
+	result |= (HIWORD(GetAsyncKeyState(VK_CONTROL))? CTRL_DOWN : 0);
+	result |= (HIWORD(GetAsyncKeyState(VK_MENU))? ALT_DOWN : 0);
+	result |= (HIWORD(GetAsyncKeyState(VK_SHIFT))? SHIFT_DOWN : 0);
+	result |= (HIWORD(GetAsyncKeyState(VK_LBUTTON))? LBUTTON_DOWN : 0);
+	result |= (HIWORD(GetAsyncKeyState(VK_MBUTTON))? MBUTTON_DOWN : 0);
+	result |= (HIWORD(GetAsyncKeyState(VK_RBUTTON))? RBUTTON_DOWN : 0);
+	result |= (HIWORD(GetAsyncKeyState(VK_XBUTTON1))? XBUTTON1_DOWN : 0);
+	result |= (HIWORD(GetAsyncKeyState(VK_XBUTTON2))? XBUTTON2_DOWN : 0);
+
+	return result;
 }
 
 }} // namespace aspect::gui

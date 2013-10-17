@@ -246,6 +246,16 @@ bool create_pbuffer(XVisualInfo *visual_info)
 }
 */
 
+window::window(creation_args const& args)
+	: window_(0)
+	, atom_close_(0)
+	, previous_video_mode_(-1)
+	, hidden_cursor_(0)
+	, input_context_(nullptr)
+{
+	create(args);
+}
+
 window::window(v8::Arguments const& v8_args)
 	: window_(0)
 	, atom_close_(0)
@@ -578,6 +588,11 @@ void window::show(bool visible)
 {
 	visible? XMapWindow(g_display, window_) : XUnmapWindow(g_display, window_);
 	XFlush(g_display);
+}
+
+void window::set_focus()
+{
+	XSetInputFocus(g_display, window_, RevertToParent, CurrentTime);
 }
 
 void window::process_event(XEvent const& event)

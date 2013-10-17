@@ -22,6 +22,7 @@ public:
 	static void init();
 	static void cleanup();
 
+	explicit window(creation_args const& args);
 	explicit window(v8::Arguments const& args);
 
 	~window() { destroy(); }
@@ -46,6 +47,7 @@ public:
 
 	void show_mouse_cursor(bool show);
 	void show(bool visible);
+	void set_focus();
 
 	void show_frame(bool show) { }
 	void set_topmost(bool topmost) { }

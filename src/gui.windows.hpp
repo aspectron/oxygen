@@ -16,7 +16,9 @@ public:
 	static void init();
 	static void cleanup();
 
-	explicit window(v8::Arguments const& args);
+	explicit window(creation_args const& args) { init(args); }
+	explicit window(v8::Arguments const& args) { init(creation_args(args)); }
+
 	~window() { destroy(); }
 
 	void destroy();
@@ -38,8 +40,11 @@ public:
 	void show_mouse_cursor(bool show);
 	void show(bool visible);
 	void switch_to_fullscreen(video_mode const& mode);
+	void set_focus();
 
 private:
+	void init(creation_args const& args);
+
 // handlers in the window thread
 	static void message_loop();
 	static LRESULT CALLBACK window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);

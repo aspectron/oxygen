@@ -1,6 +1,5 @@
 #include "core.hpp"
 #include "v8_core.hpp"
-#include "math.hpp"
 #include "async_queue.hpp"
 #include "events.hpp"
 #include "runtime.hpp"

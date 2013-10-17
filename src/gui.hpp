@@ -11,9 +11,10 @@ enum window_style
 	GWS_CLOSE       = 0x00000004,
 	GWS_FULLSCREEN  = 0x00000008,
 	GWS_APPWINDOW   = 0x00000020,
+	GWS_HIDDEN      = 0x00000040,
 };
 
-struct creation_args
+struct OXYGEN_API creation_args
 {
 	int32_t left, top;
 	uint32_t width, height;
@@ -26,6 +27,7 @@ struct creation_args
 	std::string splash;
 #endif
 
+	creation_args();
 	explicit creation_args(v8::Arguments const& args);
 };
 
@@ -43,44 +45,143 @@ struct graphics_settings
 	unsigned int antialiasing_level;
 };
 
-struct OXYGEN_API input_event
+class OXYGEN_API input_event
 {
-	std::string type;
-	math::vec2 cursor;
-	uint32_t vk_code;
-	uint32_t scancode;
-	uint32_t charcode;
-	char char_[2];
-
-	bool mod_ctrl;
-	bool mod_alt;
-	bool mod_rshift;
-	bool mod_lshift;
-	bool mod_shift;
-
-	explicit input_event(std::string const& type)
-		: type(type)
-		, cursor(0, 0)
-		, vk_code(0)
-		, scancode(0)
-		, charcode(0)
-		, char_()
-		, mod_ctrl(false)
-		, mod_alt(false)
-		, mod_rshift(false)
-		, mod_lshift(false)
-		, mod_shift(false)
-	{
+public:
 #if OS(WINDOWS)
-		mod_ctrl = HIWORD(GetAsyncKeyState(VK_CONTROL)) != 0;
-		mod_alt =  HIWORD(GetAsyncKeyState(VK_MENU)) != 0;
-		mod_lshift = HIWORD(GetAsyncKeyState(VK_SHIFT)) != 0;
-		mod_rshift = HIWORD(GetAsyncKeyState(VK_LSHIFT)) != 0;
-		mod_shift = mod_lshift || mod_rshift;
+	input_event(UINT message, WPARAM wparam, LPARAM lparam);
 #else
-		// todo-linux
+	explicit input_event(XEvent const& xevent);
 #endif
-	}
+
+	enum event_type
+	{
+		UNKNOWN,
+		KEY_DOWN, KEY_UP, KEY_CHAR,
+		MOUSE_MOVE, MOUSE_WHEEL, MOUSE_DOWN, MOUSE_UP, MOUSE_CLICK,
+	};
+
+	// Event type
+	event_type type() const { return static_cast<event_type>(type_and_state_ & TYPE_MASK); }
+
+	// Is mouse event
+	bool is_mouse() const { return type() >= MOUSE_MOVE && type() <= MOUSE_CLICK; }
+
+	// Is key event
+	bool is_key() const { return type() >= KEY_DOWN && type() <= KEY_CHAR; }
+
+	// Even type string
+	std::string type_str() const { return type_to_str(type()); }
+
+	// Ctrl key is pressed down
+	bool ctrl() const { return (type_and_state_ & CTRL_DOWN) != 0; }
+	// Alt key is pressed down
+	bool alt() const { return (type_and_state_ & ALT_DOWN) != 0; }
+	// Shift key is pressed down
+	bool shift() const { return (type_and_state_ & SHIFT_DOWN) != 0; }
+
+	// Left mouse button is pressed down
+	bool lbutton() const { return (type_and_state_ & LBUTTON_DOWN) != 0; }
+	// Middle mouse button is pressed down
+	bool mbutton() const { return (type_and_state_ & MBUTTON_DOWN) != 0; }
+	// Right mouse button is pressed down
+	bool rbutton() const { return (type_and_state_ & RBUTTON_DOWN) != 0; }
+	// X1 mouse button is pressed down
+	bool xbutton1() const { return (type_and_state_ & XBUTTON1_DOWN) != 0; }
+	// X2 mouse button is pressed down
+	bool xbutton2() const { return (type_and_state_ & XBUTTON2_DOWN) != 0; }
+
+public:
+// Mouse events
+
+	// Mouse button number (0 -none, 1 - left, 2 -middle, 3 - right, 4, 5, ... - X1, X2, ...)
+	uint32_t button() const { return (type_and_state_ & BUTTON_MASK) >> BUTTON_SHIFT; }
+
+	// Mouse X coordinate
+	int x() const { return data_.mouse.x; }
+	// Mouse Y coordinate
+	int y() const { return data_.mouse.y; }
+
+	// Delta X for mouse wheel
+	int dx() const { return data_.mouse.dx; }
+
+	// Delta Y for mouse wheel
+	int dy() const { return data_.mouse.dy; }
+
+public:
+// Key events
+
+	// Virtual key code
+	uint32_t vk_code() const { return data_.key.vk_code; }
+
+	// OEM scan code
+	uint32_t scancode() const { return data_.key.scancode; }
+
+	// Character for KEY_CHAR event
+	wchar_t character() const { return static_cast<wchar_t>(data_.key.vk_code); }
+
+	// Click count for MOUSE_CLICK event, repeat count for KEY_DOWN event
+	uint32_t repeats() const { return repeats_; }
+
+public:
+// V8 support
+
+	// Convert input event to V8 value
+	v8::Handle<v8::Value> to_v8() const;
+
+	// Create an input_event form V8 value
+	static input_event from_v8(v8::Handle<v8::Value>);
+
+private:
+	input_event() {}
+
+	static std::string type_to_str(event_type type);
+	static event_type type_from_str(std::string const& str);
+
+	static uint32_t const TYPE_MASK   = 0x000000FF;
+	static uint32_t const TYPE_SHIFT = 0;
+
+	static uint32_t const BUTTON_MASK = 0x0000FF00;
+	static uint32_t const BUTTON_SHIFT = 8;
+
+	static uint32_t const STATE_MASK  = 0xFFFF0000;
+	static uint32_t const STATE_SHIFT = 16;
+
+#if OS(WINDOWS)
+	static uint32_t mouse_type_and_state(UINT message, WPARAM wparam);
+	static uint32_t key_type_and_state(UINT message);
+#endif
+
+	enum state_flags
+	{
+		CTRL_DOWN     = 0x0001 << STATE_SHIFT,
+		ALT_DOWN      = 0x0002 << STATE_SHIFT,
+		SHIFT_DOWN    = 0x0004 << STATE_SHIFT,
+		LBUTTON_DOWN  = 0x0008 << STATE_SHIFT,
+		MBUTTON_DOWN  = 0x0010 << STATE_SHIFT,
+		RBUTTON_DOWN  = 0x0020 << STATE_SHIFT,
+		XBUTTON1_DOWN = 0x0040 << STATE_SHIFT,
+		XBUTTON2_DOWN = 0x0080 << STATE_SHIFT,
+	};
+
+	uint32_t type_and_state_;
+
+	union
+	{
+		struct
+		{
+			int x, y;
+			int dx, dy;
+		} mouse;
+
+		struct key_data
+		{
+			uint32_t vk_code;
+			uint32_t scancode;
+		} key;
+	} data_;
+
+	uint32_t repeats_;
 };
 
 class event_sink;
@@ -149,5 +250,32 @@ private:
 };
 
 }} // aspect::gui
+
+namespace v8pp {
+
+namespace detail {
+
+template<>
+struct from_v8<::aspect::gui::input_event>
+{
+	typedef ::aspect::gui::input_event result_type;
+
+	static result_type exec(v8::Handle<v8::Value> value)
+	{
+		return ::aspect::gui::input_event::from_v8(value);
+	}
+};
+
+template<typename U>
+struct from_v8_ref<::aspect::gui::input_event, U> : from_v8<::aspect::gui::input_event> {};
+
+} // detail
+
+inline v8::Handle<v8::Value> to_v8(::aspect::gui::input_event const& ev)
+{
+	return ev.to_v8();
+}
+
+} //v8pp
 
 #endif // __GUI_HPP__
