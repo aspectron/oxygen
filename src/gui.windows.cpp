@@ -224,14 +224,14 @@ void window::show_mouse_cursor(bool show)
 	cursor_= (show? LoadCursor(NULL, IDC_ARROW) : NULL);
 }
 
-bool window::process_event( UINT message, WPARAM wparam, LPARAM lparam, LRESULT& result)
+bool window::process_event(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& result)
 {
 	if (!hwnd_)
 	{
 		return false;
 	}
 
-	if (process_event_by_sink(message,wparam,lparam, result))
+	if (process_event_by_sink(message | SINKING, wparam, lparam, result))
 	{
 		return true;
 	}
@@ -466,14 +466,11 @@ void window::set_topmost(bool topmost)
 	SetWindowPos(hwnd_, topmost? HWND_TOP : NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOREPOSITION);
 }
 
-v8::Handle<v8::Value> window::get_window_rect( v8::Arguments const& )
+static Handle<Value> to_v8(RECT const& rc)
 {
 	HandleScope scope;
 
 	Handle<Object> o = Object::New();
-
-	RECT rc;
-	GetWindowRect(hwnd_, &rc);
 
 	set_option(o, "left",   rc.left);
 	set_option(o, "top",    rc.top);
@@ -483,21 +480,20 @@ v8::Handle<v8::Value> window::get_window_rect( v8::Arguments const& )
 	return scope.Close(o);
 }
 
+v8::Handle<v8::Value> window::get_window_rect(Arguments const&)
+{
+	RECT rc;
+	GetWindowRect(hwnd_, &rc);
+
+	return to_v8(rc);
+}
+
 v8::Handle<v8::Value> window::get_client_rect( v8::Arguments const& )
 {
-	HandleScope scope;
-
-	Handle<Object> o = Object::New();
-
 	RECT rc;
 	GetClientRect(hwnd_, &rc);
 
-	set_option(o, "left",   rc.left);
-	set_option(o, "top",    rc.top);
-	set_option(o, "width",  rc.right - rc.left);
-	set_option(o, "height", rc.bottom - rc.top);
-
-	return scope.Close(o);
+	return to_v8(rc);
 }
 
 window& window::on(std::string const& name, Handle<Value> fn)

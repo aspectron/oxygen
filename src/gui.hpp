@@ -204,6 +204,9 @@ public:
 	uint32_t height() const { return height_; }
 
 #if OS(WINDOWS)
+	// message sinking mask
+	static UINT const SINKING = 0x80000000;
+
 	bool process_event_by_sink(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& result);
 #endif
 
@@ -242,6 +245,8 @@ public:
 	}
 
 #if OS(WINDOWS)
+	/// Process a message after window handler, return true on the message handled
+	/// Unmask message with window::SINKING to process the message before the window handler
 	virtual bool process_events(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& result) = 0;
 #endif
 
