@@ -3,6 +3,7 @@
 
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
+#include <X11/XKBlib.h>
 
 #include <GL/glx.h>
 
@@ -17,6 +18,16 @@ XIM g_input_method = nullptr;
 static XContext window_context;
 static boost::thread process_events_thread;
 static bool is_running = false;
+
+/*
+static char const* event_names[] = {
+  "", "", "KeyPress",  "KeyRelease", "ButtonPress", "ButtonRelease", "MotionNotify", "EnterNotify", "LeaveNotify",
+  "FocusIn", "FocusOut", "KeymapNotify", "Expose", "GraphicsExpose", "NoExpose", "VisibilityNotify",
+  "CreateNotify", "DestroyNotify", "UnmapNotify", "MapNotify", "MapRequest", "ReparentNotify",
+  "ConfigureNotify", "ConfigureRequest", "GravityNotify", "ResizeRequest",  "CirculateNotify", "CirculateRequest",
+  "PropertyNotify", "SelectionClear", "SelectionRequest", "SelectionNotify", "ColormapNotify", "ClientMessage", "MappingNotify"
+};
+*/
 
 void window::init()
 {
@@ -63,6 +74,7 @@ void window::process_events()
 			XEvent event;
 	
 			XNextEvent(g_display, &event);
+//            trace("%s\n", event_names[event.type]);
 
 			XPointer window_ptr = nullptr;
 			XFindContext(g_display, event.xany.window, window_context, &window_ptr);
@@ -638,6 +650,18 @@ void window::process_event(XEvent const& event)
 			on_event("close");
 		}
 		break;
+
+	case KeyPress:
+	case KeyRelease:
+		on_input(input_event(event.xkey));
+		break;
+	case ButtonPress:
+	case ButtonRelease:
+		on_input(input_event(event.xbutton));
+		break;
+	case MotionNotify:
+        on_input(input_event(event.xmotion));
+		break;
 /*
 	// Key down event
 	case KeyPress:
@@ -717,89 +741,88 @@ void window::process_event(XEvent const& event)
 		}
 		break;
 
-	// Mouse button pressed
-	case ButtonPress:
-		{
-			unsigned int Button = WinEvent.xbutton.button;
-			if ((Button == Button1) || (Button == Button2) || (Button == Button3) || (Button == 8) || (Button == 9))
-			{
-				Event Evt;
-				Evt.Type          = Event::MouseButtonPressed;
-				Evt.MouseButton.X = WinEvent.xbutton.x;
-				Evt.MouseButton.Y = WinEvent.xbutton.y;
-				switch (Button)
-				{
-				case Button1 : Evt.MouseButton.Button = Mouse::Left;     break;
-				case Button2 : Evt.MouseButton.Button = Mouse::Middle;   break;
-				case Button3 : Evt.MouseButton.Button = Mouse::Right;    break;
-				case 8 :       Evt.MouseButton.Button = Mouse::XButton1; break;
-				case 9 :       Evt.MouseButton.Button = Mouse::XButton2; break;
-				}
-				SendEvent(Evt);
-			}
-		}
-		break;
-
-	// Mouse button released
-	case ButtonRelease:
-		{
-			unsigned int Button = WinEvent.xbutton.button;
-			if ((Button == Button1) || (Button == Button2) || (Button == Button3) || (Button == 8) || (Button == 9))
-			{
-				Event Evt;
-				Evt.Type          = Event::MouseButtonReleased;
-				Evt.MouseButton.X = WinEvent.xbutton.x;
-				Evt.MouseButton.Y = WinEvent.xbutton.y;
-				switch (Button)
-				{
-				case Button1 : Evt.MouseButton.Button = Mouse::Left;     break;
-				case Button2 : Evt.MouseButton.Button = Mouse::Middle;   break;
-				case Button3 : Evt.MouseButton.Button = Mouse::Right;    break;
-				case 8 :       Evt.MouseButton.Button = Mouse::XButton1; break;
-				case 9 :       Evt.MouseButton.Button = Mouse::XButton2; break;            
-				}
-				SendEvent(Evt);
-			}
-			else if ((Button == Button4) || (Button == Button5))
-			{
-				Event Evt;
-				Evt.Type             = Event::MouseWheelMoved;
-				Evt.MouseWheel.Delta = WinEvent.xbutton.button == Button4 ? 1 : -1;
-				SendEvent(Evt);
-			}
-		}
-		break;
-
-	// Mouse moved
-	case MotionNotify:
-		{
-			Event Evt;
-			Evt.Type        = Event::MouseMoved;
-			Evt.MouseMove.X = WinEvent.xmotion.x;
-			Evt.MouseMove.Y = WinEvent.xmotion.y;
-			SendEvent(Evt);
-		}
-		break;
-
-	// Mouse entered
-	case EnterNotify:
-		{
-			Event Evt;
-			Evt.Type = Event::MouseEntered;
-			SendEvent(Evt);
-		}
-		break;
-
-	// Mouse left
-	case LeaveNotify:
-		{
-			Event Evt;
-			Evt.Type = Event::MouseLeft;
-			SendEvent(Evt);
-		}
-		break;
 */
 	}
+}
+
+uint32_t input_event::type_and_state(int type, unsigned int state)
+{
+	uint32_t result = 0;
+	switch (type)
+	{
+	case KeyPress:
+		result = KEY_DOWN;
+		break;		 
+	case KeyRelease:
+		result = KEY_UP;
+		break;		 
+	case ButtonPress:
+		result = MOUSE_DOWN;
+		break;		 
+	case ButtonRelease:
+		result = MOUSE_UP;
+		break;		 
+	case MotionNotify:
+		result = MOUSE_MOVE;
+		break;		 
+	}
+
+	result |= (state & ShiftMask)? SHIFT_DOWN : 0;
+	result |= (state & ControlMask)? CTRL_DOWN : 0;
+	result |= (state & Mod1Mask)? ALT_DOWN : 0;
+	result |= (state & Button1Mask)? LBUTTON_DOWN : 0;
+	result |= (state & Button2Mask)? MBUTTON_DOWN : 0;
+	result |= (state & Button3Mask)? RBUTTON_DOWN : 0;
+	result |= (state & Button4Mask)? XBUTTON1_DOWN : 0;
+	result |= (state & Button5Mask)? XBUTTON2_DOWN : 0;
+	return result;
+}
+
+input_event::input_event(XKeyEvent const& xkey)
+{
+	type_and_state_ = type_and_state(xkey.type, xkey.state);
+    data_.key.vk_code = XkbKeycodeToKeysym(g_display, xkey.keycode, 0, 0);
+    data_.key.scancode = xkey.keycode;
+    repeats_ = 0;
+}
+
+input_event::input_event(XButtonEvent const& xbutton)
+{
+	type_and_state_ = type_and_state(xbutton.type, xbutton.state);
+    data_.mouse.x = xbutton.x;
+    data_.mouse.y = xbutton.y;
+    data_.mouse.dx = data_.mouse.dy = 0;
+    repeats_ = 0;
+    switch (xbutton.button)
+    {
+        // Left, Middle, Right mouse buttons
+        case 1: case 2: case 3:
+            type_and_state_ |= (xbutton.button << BUTTON_SHIFT) & BUTTON_MASK;
+            break;
+        // X1 and X2 Buttons
+        case 8: case 9: // x1 x2
+            type_and_state_ |= ((xbutton.button - 4) << BUTTON_SHIFT) & BUTTON_MASK;
+            break;
+        // Mouse wheels for ButtonRelease only
+        case 4: case 5: case 6: case 7:
+            type_and_state_ &= ~TYPE_MASK;
+            if (xbutton.type == ButtonRelease)
+            {
+                type_and_state_ |= (MOUSE_WHEEL << TYPE_SHIFT) & TYPE_MASK;
+                data_.mouse.dx = (xbutton.button == 6? -1 : xbutton.button == 7? 1 : 0);
+                data_.mouse.dy = (xbutton.button == 4? -1 : xbutton.button == 5? 1 : 0);
+            }
+            break;
+    }
+}
+
+input_event::input_event(XMotionEvent const& xmotion)
+{
+	type_and_state_ = type_and_state(xmotion.type, xmotion.state);
+    data_.mouse.x = xmotion.x;
+    data_.mouse.y = xmotion.y;
+    data_.mouse.dx = data_.mouse.dy = 0;
+    repeats_ = 0;
 }
 
 }} // aspect::gui

@@ -101,7 +101,7 @@ Handle<Value> input_event::to_v8() const
 			set_option(object, "vk_code",  vk_code());
 			set_option(object, "scancode", scancode());
 			set_option(object, "charcode", character());
-			set_option(object, "char",     std::wstring(1, character()));
+    		//set_option(object, "char", std::wstring(1, ch));
 		}
 		else if (is_mouse())
 		{
@@ -193,7 +193,7 @@ void window_base::on_resize(uint32_t width, uint32_t height)
 
 void window_base::on_input(input_event const& e)
 {
-	if (event_handlers_.has(e.type_str()))
+	if (e.type() != input_event::UNKNOWN && event_handlers_.has(e.type_str()))
 	{
 		runtime::main_loop().schedule(boost::bind(&window::on_input_v8, this, e));
 	}

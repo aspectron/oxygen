@@ -1,6 +1,10 @@
 #ifndef __GUI_HPP__
 #define __GUI_HPP__
 
+#if !OS(WINDOWS)
+#include <X11/Xlib.h>
+#endif
+
 namespace aspect { namespace gui {
 
 enum window_style
@@ -51,7 +55,9 @@ public:
 #if OS(WINDOWS)
 	input_event(UINT message, WPARAM wparam, LPARAM lparam);
 #else
-	explicit input_event(XEvent const& xevent);
+	explicit input_event(XKeyEvent const& xkey);
+	explicit input_event(XButtonEvent const& xbutton);
+	explicit input_event(XMotionEvent const& xmotion);
 #endif
 
 	enum event_type
@@ -118,7 +124,7 @@ public:
 	uint32_t scancode() const { return data_.key.scancode; }
 
 	// Character for KEY_CHAR event
-	wchar_t character() const { return static_cast<wchar_t>(data_.key.vk_code); }
+	int character() const { return static_cast<int>(data_.key.vk_code); }
 
 	// Click count for MOUSE_CLICK event, repeat count for KEY_DOWN event
 	uint32_t repeats() const { return repeats_; }
@@ -150,6 +156,8 @@ private:
 #if OS(WINDOWS)
 	static uint32_t mouse_type_and_state(UINT message, WPARAM wparam);
 	static uint32_t key_type_and_state(UINT message);
+#else
+	static uint32_t type_and_state(int type, unsigned int state);
 #endif
 
 	enum state_flags
