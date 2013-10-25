@@ -83,14 +83,43 @@ struct OXYGEN_API input_event
 	}
 };
 
+class event_sink;
+
 class OXYGEN_API window_base
 {
 	friend class event_sink;
 public:
 
+	typedef v8pp::class_<window_base, v8pp::no_factory> js_class;
+
+	window_base()
+		: width_(0)
+		, height_(0)
+		, style_(0)
+	{
+	}
+
+	uint32_t width() const { return width_; }
+	uint32_t height() const { return height_; }
+
 #if OS(WINDOWS)
 	bool process_event_by_sink(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& result);
 #endif
+
+protected:
+	void on_resize(uint32_t width, uint32_t height);
+	void on_input(input_event const& e);
+	void on_event(std::string const& type);
+
+	uint32_t width_, height_;
+	unsigned style_;
+	aspect::event_handler<std::string> event_handlers_;
+
+private:
+//V8 handlers
+	void on_resize_v8(uint32_t width, uint32_t height);
+	void on_input_v8(input_event e);
+	void on_event_v8(std::string type);
 
 private:
 	typedef std::list<event_sink*> event_sinks;

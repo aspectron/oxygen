@@ -23,9 +23,6 @@ public:
 
 	operator HWND() const { return hwnd_; }
 
-	uint32_t width() const { return width_; }
-	uint32_t height() const { return height_; }
-
 	window& on(std::string const& name, v8::Handle<v8::Value> fn);
 	window& off(std::string const& name);
 
@@ -60,15 +57,10 @@ private:
 private:
 	// handlers in V8 thread
 	void v8_process_message(uint32_t message, uint32_t wparam, uint32_t lparam);
-	void v8_process_input_event(input_event e);
-	void v8_process_event(std::string const& type);
-	void v8_process_resize(uint32_t width, uint32_t height);
 
 private:
 	HWND hwnd_;
 
-	uint32_t width_, height_;
-	unsigned style_;
 	HCURSOR cursor_;
 	bool fullscreen_;
 
@@ -76,8 +68,6 @@ private:
 	bool drag_accept_files_enabled_;
 
 	boost::scoped_array<uint8_t> splash_bitmap_;
-
-	event_handler<std::string> event_handlers_;
 };
 
 }} // aspect::gui
