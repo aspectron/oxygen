@@ -3,22 +3,82 @@
 
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
-//#include <X11/extensions/Xrandr.h>
+
+#include <GL/glx.h>
 
 using namespace v8;
 
 namespace aspect { namespace gui {
 
-Display *g_display = nullptr;
+Display* g_display = nullptr;
 int g_screen = 0;
 XIM g_input_method = nullptr;
+
+static XContext window_context;
+static boost::thread process_events_thread;
+static bool is_running = false;
+
+void window::init()
+{
+	XInitThreads();
+	g_display = XOpenDisplay(nullptr);
+	if (!g_display)
+	{
+		throw std::runtime_error("Failed to open a connection with the X server");
+	}
+
+	g_screen = DefaultScreen(g_display);
+	g_input_method = XOpenIM(g_display, nullptr, nullptr, nullptr);
+
+	is_running = true;
+	process_events_thread = boost::thread(&window::process_events);
+}
+
+void window::cleanup()
+{
+	is_running = false;
+	if (process_events_thread.joinable()) process_events_thread.join();
+
+	if (g_input_method)
+	{
+		XCloseIM(g_input_method);
+		g_input_method = nullptr;
+	}
+
+	g_screen = 0;
+
+	if (g_display)
+	{
+		XCloseDisplay(g_display);
+		g_display = nullptr;
+	}
+}
+
+void window::process_events()
+{
+	while (is_running)
+	{
+		while (XPending(g_display) > 0)
+		{
+			XEvent event;
+	
+			XNextEvent(g_display, &event);
+
+			XPointer window_ptr = nullptr;
+			XFindContext(g_display, event.xany.window, window_context, &window_ptr);
+			if (window_ptr)
+			{
+				reinterpret_cast<window*>(window_ptr)->process_event(event);
+			}
+		}
+		boost::this_thread::yield();
+	}
+}
 
 static unsigned long const ms_event_mask  =
 	FocusChangeMask | ButtonPressMask | ButtonReleaseMask | ButtonMotionMask |
 	PointerMotionMask | KeyPressMask | KeyReleaseMask | StructureNotifyMask |
 	EnterWindowMask | LeaveWindowMask;
-
-static std::vector<window*> window_list_;
 
 static unsigned score_config(creation_args const& args, graphics_settings const& settings,
 	int color_bits, int depth_bits, int stencil_bits, int antialiasing_level)
@@ -186,70 +246,24 @@ bool create_pbuffer(XVisualInfo *visual_info)
 }
 */
 
-void window::init()
-{
-	g_display = XOpenDisplay(NULL);
-
-	if(g_display)
-	{
-		g_screen = DefaultScreen(g_display);
-		g_input_method = XOpenIM(g_display, NULL, NULL, NULL);
-	}
-	else
-	{
-		std::cerr << "Failed to open a connection with the X server" << std::endl;
-	}
-
-	oxygen_thread::start();
-}
-
-void cleanup()
-{
-	oxygen_thread::stop();
-
-	if (g_input_method)
-	{
-		XCloseIM(g_input_method);
-		g_input_method = nullptr;
-	}
-	g_screen = 0;
-	if (g_display)
-	{
-		XCloseDisplay(g_display);
-		g_display = nullptr;
-	}
-}
-
-Bool check_event(::Display*, XEvent* event, XPointer user_data)
-{
-	// Just check if the event matches the window
-	return event->xany.window == reinterpret_cast< ::Window >(user_data);
-}
-
-void window::process_windows_events()
-{
-	std::for_each(window_list_.begin(), window_list_.end(),
-		[](window* w) {w->process_events(); });
-}
-
 window::window(v8::Arguments const& v8_args)
 	: window_(0)
 	, atom_close_(0)
 	, previous_video_mode_(-1)
 	, hidden_cursor_(0)
-	, input_context_(NULL)
-	, fullscreen_(false)
-	, terminating_(false)
+	, input_context_(nullptr)
 {
 	creation_args const args(v8_args);
 	create(args);
-
-	window_list_.push_back(this);
 }
 
 void window::create(creation_args const& args)
 {
-	bool const fullscreen = (args.style & GWS_FULLSCREEN) != 0;
+	style_ = args.style;
+	if (style_ & GWS_APPWINDOW)
+		style_ |= GWS_TITLEBAR | GWS_RESIZE | GWS_CLOSE;
+
+	bool const fullscreen = (style_ & GWS_FULLSCREEN) != 0;
 
 	// Compute position and size
 	int const width = width_ = args.width;
@@ -292,12 +306,13 @@ void window::create(creation_args const& args)
 		CWEventMask | CWColormap | CWOverrideRedirect, &Attributes);
 	if (!window_)
 	{
-		std::cerr << "Failed to create window" << std::endl;
-		return;
+		throw std::runtime_error("Failed to create window");
 	}
+	XSaveContext(g_display, window_, window_context, reinterpret_cast<XPointer>(this));
+
 
 	// Set the window's name
-	XStoreName(g_display, window_, args->caption.c_str());
+	XStoreName(g_display, window_, args.caption.c_str());
 
 	// Set the window's style (tell the windows manager to change our window's decorations and functions according to the requested style)
 	if (!fullscreen)
@@ -337,22 +352,19 @@ void window::create(creation_args const& args)
 			Hints.Decorations = 0;
 			Hints.Functions   = 0;
 
-			uint32_t style = args->style;
-			if (style & GWS_APPWINDOW)
-				style |= GWS_TITLEBAR | GWS_RESIZE | GWS_CLOSE;
 
-			if (style & GWS_TITLEBAR)
+			if (style_ & GWS_TITLEBAR)
 			{
 				Hints.Decorations |= MWM_DECOR_BORDER | MWM_DECOR_TITLE | MWM_DECOR_MINIMIZE | MWM_DECOR_MENU;
 				Hints.Functions   |= MWM_FUNC_MOVE | MWM_FUNC_MINIMIZE;
 			}
-			if (style & GWS_RESIZE)
+			if (style_ & GWS_RESIZE)
 			{
 				Hints.Decorations |= MWM_DECOR_MAXIMIZE | MWM_DECOR_RESIZEH;
 				Hints.Functions   |= MWM_FUNC_MAXIMIZE | MWM_FUNC_RESIZE;
 			}
 
-			if (style & GWS_CLOSE)
+			if (style_ & GWS_CLOSE)
 			{
 				Hints.Decorations |= 0;
 				Hints.Functions   |= MWM_FUNC_CLOSE;
@@ -364,7 +376,7 @@ void window::create(creation_args const& args)
 
 		// This is a hack to force some windows managers to disable resizing
 #if 0 // TODO!
-		if (!(args.style & GWS_RESIZE))
+		if (!(style_ & GWS_RESIZE))
 		{
 			XSizeHints XSizeHints;
 			XSizeHints.flags      = PMinSize | PMaxSize;
@@ -402,7 +414,7 @@ void window::_init()
 			XNClientWindow,  window_,
 			XNFocusWindow,   window_,
 			XNInputStyle,    XIMPreeditNothing  | XIMStatusNothing,
-			NULL);
+			nullptr);
 
 		if (!input_context_)
 			std::cerr << "Failed to create input context for window -- TextEntered event won't be able to return unicode" << std::endl;
@@ -426,7 +438,7 @@ void window::create_hidden_cursor()
 {
 	// Create the cursor's pixmap (1x1 pixels)
 	Pixmap CursorPixmap = XCreatePixmap(g_display, window_, 1, 1, 1);
-	GC GraphicsContext = XCreateGC(g_display, CursorPixmap, 0, NULL);
+	GC GraphicsContext = XCreateGC(g_display, CursorPixmap, 0, nullptr);
 	XDrawPoint(g_display, CursorPixmap, GraphicsContext, 0, 0);
 	XFreeGC(g_display, GraphicsContext);
 
@@ -440,8 +452,10 @@ void window::create_hidden_cursor()
 	XFreePixmap(g_display, CursorPixmap);
 }
 
-void window::switch_to_fullscreen(video_mode const& mode)
+bool window::switch_to_fullscreen(video_mode const& mode)
 {
+	bool result = false;
+
 	// Check if the XRandR extension is present
 	int Version;
 	if (XQueryExtension(g_display, "RANDR", &Version, &Version, &Version))
@@ -450,25 +464,23 @@ void window::switch_to_fullscreen(video_mode const& mode)
 		XRRScreenConfiguration* Config = XRRGetScreenInfo(g_display, RootWindow(g_display, g_screen));
 		if (Config)
 		{
-			// Get the current rotation
-			Rotation current_rotation;
-			previous_video_mode_ = XRRConfigCurrentConfiguration(Config, &current_rotation);
-
 			// Get the available screen sizes
 			int NbSizes;
 			XRRScreenSize* Sizes = XRRConfigSizes(Config, &NbSizes);
-			if (Sizes && (NbSizes > 0))
+			if (Sizes && NbSizes > 0)
 			{
 				// Search a matching size
 				for (int i = 0; i < NbSizes; ++i)
 				{
-					if ((Sizes[i].width == static_cast<int>(mode.width)) && (Sizes[i].height == static_cast<int>(mode.height)))
+					if (Sizes[i].width == mode.width && Sizes[i].height == mode.height)
 					{
+						// Get the current rotation
+						Rotation current_rotation;
+						previous_video_mode_ = XRRConfigCurrentConfiguration(Config, &current_rotation);
+
 						// Switch to fullscreen mode
 						XRRSetScreenConfig(g_display, Config, RootWindow(g_display, g_screen), i, current_rotation, CurrentTime);
-
-						// Set "this" as the current fullscreen window
-						fullscreen_ = true;
+						result = true;
 						break;
 					}
 				}
@@ -480,7 +492,7 @@ void window::switch_to_fullscreen(video_mode const& mode)
 		else
 		{
 			// Failed to get the screen configuration
-			std::cerr << "Failed to get the current screen configuration for fullscreen mode, switching to windiw mode" << std::endl;
+			std::cerr << "Failed to get the current screen configuration for fullscreen mode, switching to window mode" << std::endl;
 		}
 	}
 	else
@@ -488,35 +500,43 @@ void window::switch_to_fullscreen(video_mode const& mode)
 		// XRandr extension is not supported : we cannot use fullscreen mode
 		std::cerr << "Fullscreen is not supported, switching to window mode" << std::endl;
 	}
+
+	return result;
 }
 
 void window::destroy()
 {
-	window_list_.remove(this);
+	if (!window_)
+	{
+		return;
+	}
 
 	// Cleanup graphical resources
-	cleanup();
+	_cleanup();
+	XDeleteContext(g_display, window_, window_context);	
 
 	// Destroy the input context
 	if (input_context_)
 	{
 		XDestroyIC(input_context_);
-		input_context_ = NULL;
+		input_context_ = nullptr;
 	}
 
 	// Destroy the window
-	if (window_)
+	XDestroyWindow(g_display, window_);
+	XFlush(g_display);
+	window_ = 0;
+
+	if (style_ & GWS_APPWINDOW)
 	{
-		XDestroyWindow(g_display, window_);
-		XFlush(g_display);
-		window_ = 0;
+		is_running = false;
 	}
 }
 
-void window::cleanup()
+void window::_cleanup()
 {
 	// Restore the previous video mode (in case we were running in fullscreen)
-	if (fullscreen_)
+	if (previous_video_mode_ >= 0)
 	{
 		// Get current screen info
 		XRRScreenConfiguration* Config = XRRGetScreenInfo(g_display, RootWindow(g_display, g_screen));
@@ -534,7 +554,7 @@ void window::cleanup()
 		} 
 
 		// Reset the fullscreen window
-		fullscreen_ = false;
+		previous_video_mode_ = -1;
 	}
 
 	// Unhide the mouse cursor (in case it was hidden)
@@ -560,14 +580,13 @@ void window::show(bool visible)
 	XFlush(g_display);
 }
 
-void window::process_event(XEvent WinEvent)
+void window::process_event(XEvent const& event)
 {
-	switch (WinEvent.type)
+	switch (event.type)
 	{
 	case DestroyNotify:
 		// The window is about to be destroyed : we must cleanup resources
-		cleanup();
-		terminating_ = true;
+		_cleanup();
 		break;
 
 	case FocusIn:
@@ -588,18 +607,20 @@ void window::process_event(XEvent WinEvent)
 
 	// Resize event
 	case ConfigureNotify:
-		if ((WinEvent.xconfigure.width != static_cast<int>(width_)) || (WinEvent.xconfigure.height != static_cast<int>(height_)))
+		if (event.xconfigure.width != width_ || event.xconfigure.height != height_)
 		{
-			width_  = WinEvent.xconfigure.width;
-			height_ = WinEvent.xconfigure.height;
+			width_  = event.xconfigure.width;
+			height_ = event.xconfigure.height;
+			on_resize(width_, height_);
 		}
 		break;
 
 	// Close event
 	case ClientMessage:
-		if ((WinEvent.xclient.format == 32) && (WinEvent.xclient.data.l[0]) == static_cast<long>(atom_close_))
+		if (event.xclient.format == 32 && event.xclient.data.l[0] == atom_close_)
 		{
-			terminating_ = true;
+			destroy();
+			on_event("close");
 		}
 		break;
 /*
@@ -763,54 +784,6 @@ void window::process_event(XEvent WinEvent)
 		}
 		break;
 */
-	}
-}
-
-void window::process_events(bool blocking)
-{
-	// Process any event in the queue matching our window
-	XEvent Event;
-//	while (!m_terminate && XIfEvent(g_display, &Event, &check_event, reinterpret_cast<XPointer>(window_)))
-	while (XCheckIfEvent(g_display, &Event, &check_event, reinterpret_cast<XPointer>(window_)))
-	{
-		// Detect repeated key events
-//		if ((Event.type == KeyPress) || (Event.type == KeyRelease))
-//		{
-//			if (Event.xkey.keycode < 256)
-//			{
-//				char Keys[32];
-//				XQueryKeymap(g_display, Keys);
-//				if (Keys[Event.xkey.keycode >> 3] & (1 << (Event.xkey.keycode % 8)))
-//				{
-//					// KeyRelease event + key down = repeated event --> discard
-//					if (Event.type == KeyRelease)
-//					{
-//						myLastKeyReleaseEvent = Event;
-//						continue;
-//					}
-//
-//					// KeyPress event + key repeat disabled + matching KeyRelease event = repeated event --> discard
-//					if ((Event.type == KeyPress) && !myKeyRepeat &&
-//						(myLastKeyReleaseEvent.xkey.keycode == Event.xkey.keycode) &&
-//						(myLastKeyReleaseEvent.xkey.time == Event.xkey.time))
-//					{
-//						continue;
-//					}
-//				}
-//			}
-//		}
-
-		// Process the event
-		process_event(Event);
-	}
-}
-
-void process_events_blocking()
-{
-	XEvent Event;
-	while (!terminating_ && !XIfEvent(g_display, &Event, &check_event, reinterpret_cast<XPointer>(window_)))
-	{
-		process_event(Event);
 	}
 }
 

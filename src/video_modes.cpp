@@ -1,11 +1,6 @@
 #include "oxygen.hpp"
 #include "video_modes.hpp"
 
-#if OS(LINUX)
-#include <X11/Xlib.h>
-#include <X11/extensions/Xrandr.h>
-#endif
-
 namespace aspect {
 
 static video_modes modes_;
@@ -52,13 +47,10 @@ video_mode get_current_video_mode()
 	return video_mode(Win32Mode.dmPelsWidth, Win32Mode.dmPelsHeight, Win32Mode.dmBitsPerPel);
 }
 
-#endif
-
-#if OS(LINUX)
+#elif OS(LINUX)
 
 void init_supported_video_modes(video_modes& modes)
 {
-    // First, clear array to fill
     modes.clear();
 
 	_aspect_assert(aspect::gui::g_display);
