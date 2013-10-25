@@ -48,7 +48,14 @@ void window::init()
 void window::cleanup()
 {
 	is_running = false;
-	if (process_events_thread.joinable()) process_events_thread.join();
+
+    // Send dummy event to wake up thread
+	XClientMessageEvent dummy = {};
+    dummy.type = ClientMessage;
+    dummy.format = 8;
+    XSendEvent(g_display, 0, 0, 0, (XEvent*)&dummy);
+
+    if (process_events_thread.joinable()) process_events_thread.join();
 
 	if (g_input_method)
 	{
@@ -69,12 +76,12 @@ void window::process_events()
 {
 	while (is_running)
 	{
-		while (XPending(g_display) > 0)
+		for(int pending_events = XPending(g_display); pending_events > 0; --pending_events)
 		{
 			XEvent event;
 	
 			XNextEvent(g_display, &event);
-//            trace("%s\n", event_names[event.type]);
+//			trace("%s\n", event_names[event.type]);
 
 			XPointer window_ptr = nullptr;
 			XFindContext(g_display, event.xany.window, window_context, &window_ptr);
@@ -83,7 +90,17 @@ void window::process_events()
 				reinterpret_cast<window*>(window_ptr)->process_event(event);
 			}
 		}
-		boost::this_thread::yield();
+		
+		// Start waiting for a next event. XNextEvent blocks g_display so other threads can't use Xlib.
+		// Using select() for the display connection to wait for another XEvent
+
+		int fd = ConnectionNumber(g_display);
+		fd_set fds;
+		FD_ZERO(&fds);
+		FD_SET(fd, &fds);
+
+		if (select(fd + 1, &fds, NULL, NULL, NULL) < 0)
+            break;
 	}
 }
 
