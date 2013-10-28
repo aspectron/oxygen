@@ -49,13 +49,13 @@ void window::cleanup()
 {
 	is_running = false;
 
-    // Send dummy event to wake up thread
+	// Send dummy event to wake up thread
 	XClientMessageEvent dummy = {};
-    dummy.type = ClientMessage;
-    dummy.format = 8;
-    XSendEvent(g_display, 0, 0, 0, (XEvent*)&dummy);
+	dummy.type = ClientMessage;
+	dummy.format = 8;
+	XSendEvent(g_display, 0, 0, 0, (XEvent*)&dummy);
 
-    if (process_events_thread.joinable()) process_events_thread.join();
+	if (process_events_thread.joinable()) process_events_thread.join();
 
 	if (g_input_method)
 	{
@@ -100,7 +100,7 @@ void window::process_events()
 		FD_SET(fd, &fds);
 
 		if (select(fd + 1, &fds, NULL, NULL, NULL) < 0)
-            break;
+			break;
 	}
 }
 
@@ -267,11 +267,10 @@ bool create_pbuffer(XVisualInfo *visual_info)
 	{
 		_window->setErrorMessage( "Could not create PBuffer" );
 		return false;
-	}   
-				   
+	}
+
 	XFlush( display );
 	setXDrawable( pbuffer );
-
 }
 */
 
@@ -677,7 +676,7 @@ void window::process_event(XEvent const& event)
 		on_input(input_event(event.xbutton));
 		break;
 	case MotionNotify:
-        on_input(input_event(event.xmotion));
+		on_input(input_event(event.xmotion));
 		break;
 /*
 	// Key down event
@@ -798,48 +797,48 @@ uint32_t input_event::type_and_state(int type, unsigned int state)
 input_event::input_event(XKeyEvent const& xkey)
 {
 	type_and_state_ = type_and_state(xkey.type, xkey.state);
-    data_.key.vk_code = XkbKeycodeToKeysym(g_display, xkey.keycode, 0, 0);
-    data_.key.scancode = xkey.keycode;
-    repeats_ = 0;
+	data_.key.vk_code = XkbKeycodeToKeysym(g_display, xkey.keycode, 0, 0);
+	data_.key.scancode = xkey.keycode;
+	repeats_ = 0;
 }
 
 input_event::input_event(XButtonEvent const& xbutton)
 {
 	type_and_state_ = type_and_state(xbutton.type, xbutton.state);
-    data_.mouse.x = xbutton.x;
-    data_.mouse.y = xbutton.y;
-    data_.mouse.dx = data_.mouse.dy = 0;
-    repeats_ = 0;
-    switch (xbutton.button)
-    {
-        // Left, Middle, Right mouse buttons
-        case 1: case 2: case 3:
-            type_and_state_ |= (xbutton.button << BUTTON_SHIFT) & BUTTON_MASK;
-            break;
-        // X1 and X2 Buttons
-        case 8: case 9: // x1 x2
-            type_and_state_ |= ((xbutton.button - 4) << BUTTON_SHIFT) & BUTTON_MASK;
-            break;
-        // Mouse wheels for ButtonRelease only
-        case 4: case 5: case 6: case 7:
-            type_and_state_ &= ~TYPE_MASK;
-            if (xbutton.type == ButtonRelease)
-            {
-                type_and_state_ |= (MOUSE_WHEEL << TYPE_SHIFT) & TYPE_MASK;
-                data_.mouse.dx = (xbutton.button == 6? -1 : xbutton.button == 7? 1 : 0);
-                data_.mouse.dy = (xbutton.button == 4? -1 : xbutton.button == 5? 1 : 0);
-            }
-            break;
-    }
+	data_.mouse.x = xbutton.x;
+	data_.mouse.y = xbutton.y;
+	data_.mouse.dx = data_.mouse.dy = 0;
+	repeats_ = 0;
+	switch (xbutton.button)
+	{
+		// Left, Middle, Right mouse buttons
+		case 1: case 2: case 3:
+			type_and_state_ |= (xbutton.button << BUTTON_SHIFT) & BUTTON_MASK;
+			break;
+		// X1 and X2 Buttons
+		case 8: case 9: // x1 x2
+			type_and_state_ |= ((xbutton.button - 4) << BUTTON_SHIFT) & BUTTON_MASK;
+			break;
+		// Mouse wheels for ButtonRelease only
+		case 4: case 5: case 6: case 7:
+			type_and_state_ &= ~TYPE_MASK;
+			if (xbutton.type == ButtonRelease)
+			{
+				type_and_state_ |= (MOUSE_WHEEL << TYPE_SHIFT) & TYPE_MASK;
+				data_.mouse.dx = (xbutton.button == 6? 1 : xbutton.button == 7? -1 : 0);
+				data_.mouse.dy = (xbutton.button == 4? 1 : xbutton.button == 5? -1 : 0);
+			}
+			break;
+	}
 }
 
 input_event::input_event(XMotionEvent const& xmotion)
 {
 	type_and_state_ = type_and_state(xmotion.type, xmotion.state);
-    data_.mouse.x = xmotion.x;
-    data_.mouse.y = xmotion.y;
-    data_.mouse.dx = data_.mouse.dy = 0;
-    repeats_ = 0;
+	data_.mouse.x = xmotion.x;
+	data_.mouse.y = xmotion.y;
+	data_.mouse.dx = data_.mouse.dy = 0;
+	repeats_ = 0;
 }
 
 }} // aspect::gui
