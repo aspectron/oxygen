@@ -457,7 +457,7 @@ void window::show_frame(bool show)
 
 void window::set_window_rect(uint32_t left, uint32_t top, uint32_t width, uint32_t height)
 {
-	SetWindowPos(hwnd_, NULL, left, top, width, height, SWP_SHOWWINDOW);
+	SetWindowPos(hwnd_, NULL, left, top, width, height, 0);
 	update_window_size();
 }
 
@@ -572,7 +572,7 @@ input_event::input_event(UINT message, WPARAM wparam, LPARAM lparam)
 	{
 		type_and_state_ = key_type_and_state(message);
 		data_.key.vk_code = wparam;
-		data_.key.scancode = (lparam >> 16) & 0xFF;
+		data_.key.scancode = lparam;
 		repeats_ = LOWORD(lparam);
 	}
 }
