@@ -11,6 +11,8 @@ namespace aspect { namespace gui {
 static wchar_t const WINDOW_CLASS_NAME[] = L"jsx_generic";
 
 static boost::thread window_thread_;
+static boost::mutex window_create_mutex_;
+static boost::condition_variable window_created_cv_;
 
 void post_thread_message(UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -67,7 +69,9 @@ void window::message_loop()
 				window* w = reinterpret_cast<window*>(msg.wParam);
 				creation_args const* args = reinterpret_cast<creation_args const*>(msg.lParam);
 
+				boost::mutex::scoped_lock lock(window_create_mutex_);
 				w->create(*args);
+				window_created_cv_.notify_one();
 			}
 			else
 			{
@@ -124,9 +128,10 @@ void window::init(creation_args const& args)
 	post_thread_message(WM_USER, (WPARAM)this, (LPARAM)&args);
 
 	// wait for the window create completion
+	boost::mutex::scoped_lock lock(window_create_mutex_);
 	while (!hwnd_)
 	{
-		boost::this_thread::yield();
+		window_created_cv_.wait(lock);
 	}
 }
 
