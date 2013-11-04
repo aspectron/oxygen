@@ -101,7 +101,9 @@ Handle<Value> input_event::to_v8() const
 			set_option(object, "vk_code",  vk_code());
 			set_option(object, "scancode", scancode());
 			set_option(object, "charcode", character());
-    		//set_option(object, "char", std::wstring(1, ch));
+
+			char const ch = character();
+			if (isascii(ch)) set_option(object, "char", std::string(1, ch));
 		}
 		else if (is_mouse())
 		{
