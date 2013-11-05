@@ -269,22 +269,22 @@ namespace v8pp {
 namespace detail {
 
 template<>
-struct from_v8<::aspect::gui::input_event>
+struct from_v8<aspect::gui::input_event>
 {
-	typedef ::aspect::gui::input_event result_type;
+	typedef aspect::gui::input_event result_type;
 
 	static result_type exec(v8::Handle<v8::Value> value)
 	{
-		return ::aspect::gui::input_event::from_v8(value);
+		return aspect::gui::input_event::from_v8(value);
 	}
 };
 
 template<typename U>
-struct from_v8_ref<::aspect::gui::input_event, U> : from_v8<::aspect::gui::input_event> {};
+struct from_v8_ref<aspect::gui::input_event, U> : from_v8<aspect::gui::input_event> {};
 
 } // detail
 
-inline v8::Handle<v8::Value> to_v8(::aspect::gui::input_event const& ev)
+inline v8::Handle<v8::Value> to_v8(aspect::gui::input_event const& ev)
 {
 	return ev.to_v8();
 }
