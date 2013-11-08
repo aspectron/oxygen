@@ -286,14 +286,14 @@ bool window::process_event(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& 
 	case WM_DROPFILES:
 		{
 			HDROP hDrop = (HDROP) wparam;
-			uint32_t const count = DragQueryFile(hDrop, (UINT)-1, NULL, NULL);
+			UINT const count = DragQueryFile(hDrop, (UINT)-1, NULL, NULL);
 			shared_wstrings files = boost::make_shared<wstrings>(count);
-			for (uint32_t i = 0; i < count; ++i)
+			for (UINT i = 0; i < count; ++i)
 			{
 				std::wstring& file = (*files)[i];
-				size_t const len = DragQueryFile(hDrop, i, NULL, 0) + 1;
+				UINT const len = DragQueryFile(hDrop, i, NULL, 0) + 1;
 				file.resize(len);
-				DragQueryFile(hDrop, i, &file[0], file.size());
+				DragQueryFile(hDrop, i, &file[0], len);
 				if (file.back() == 0) file.pop_back();
 			}
 			DragFinish(hDrop);
@@ -576,8 +576,8 @@ input_event::input_event(UINT message, WPARAM wparam, LPARAM lparam)
 	else if (message >= WM_KEYDOWN && message <= WM_CHAR)
 	{
 		type_and_state_ = key_type_and_state(message);
-		data_.key.vk_code = wparam;
-		data_.key.scancode = lparam;
+		data_.key.vk_code = static_cast<uint32_t>(wparam);
+		data_.key.scancode = static_cast<uint32_t>(lparam);
 		repeats_ = LOWORD(lparam);
 	}
 }
