@@ -194,7 +194,7 @@ private:
 
 class event_sink;
 
-class OXYGEN_API window_base
+class OXYGEN_API window_base : public v8_core::event_emitter
 {
 	friend class event_sink;
 public:
@@ -225,7 +225,6 @@ protected:
 
 	uint32_t width_, height_;
 	unsigned style_;
-	aspect::event_handler<std::string> event_handlers_;
 
 private:
 //V8 handlers

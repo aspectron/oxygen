@@ -187,7 +187,7 @@ input_event input_event::from_v8(v8::Handle<v8::Value> value)
 
 void window_base::on_resize(uint32_t width, uint32_t height)
 {
-	if (event_handlers_.has("resize"))
+	if (has("resize"))
 	{
 		runtime::main_loop().schedule(boost::bind(&window_base::on_resize_v8, this, width, height));
 	}
@@ -195,7 +195,7 @@ void window_base::on_resize(uint32_t width, uint32_t height)
 
 void window_base::on_input(input_event const& e)
 {
-	if (e.type() != input_event::UNKNOWN && event_handlers_.has(e.type_str()))
+	if (e.type() != input_event::UNKNOWN && has(e.type_str()))
 	{
 		runtime::main_loop().schedule(boost::bind(&window::on_input_v8, this, e));
 	}
@@ -203,7 +203,7 @@ void window_base::on_input(input_event const& e)
 
 void window_base::on_event(std::string const& type)
 {
-	if (event_handlers_.has(type))
+	if (has(type))
 	{
 		runtime::main_loop().schedule(boost::bind(&window::on_event_v8, this, type));
 	}
@@ -218,7 +218,7 @@ void window_base::on_resize_v8(uint32_t width, uint32_t height)
 	set_option(o, "height", height);
 
 	v8::Handle<v8::Value> args[1] = { o };
-	event_handlers_.call("resize", v8pp::to_v8(this)->ToObject(), 1, args);
+	emit("resize", 1, args);
 }
 
 void window_base::on_input_v8(input_event e)
@@ -226,12 +226,12 @@ void window_base::on_input_v8(input_event e)
 	v8::HandleScope scope;
 
 	v8::Handle<v8::Value> args[1] = { e.to_v8() };
-	event_handlers_.call(e.type_str(), v8pp::to_v8(this)->ToObject(), 1, args);
+	emit(e.type_str(), 1, args);
 }
 
 void window_base::on_event_v8(std::string type)
 {
-	event_handlers_.call(type, v8pp::to_v8(this)->ToObject(), 0, nullptr);
+	emit(type, 0, nullptr);
 }
 
 #if OS(WINDOWS)

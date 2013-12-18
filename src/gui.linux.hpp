@@ -33,15 +33,15 @@ public:
 
 	XVisualInfo& current_visual() { return current_visual_; }
 
-	window& on(std::string const& name, v8::Handle<v8::Value> fn)
+	window& on(std::string const& name, v8::Handle<v8::Function> fn)
 	{
-		event_handlers_.on(name, fn);
+		window_base::on(name, fn);
 		return *this;
 	}
 
 	window& off(std::string const& name)
 	{
-		event_handlers_.off(name);
+		window_base::off(name);
 		return *this;
 	}
 

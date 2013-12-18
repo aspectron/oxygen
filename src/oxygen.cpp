@@ -28,7 +28,7 @@ Handle<Value> oxygen_install()
 
 	v8pp::module oxygen_module;
 
-	window::js_class window_class;
+	window::js_class window_class(*v8_core::event_emitter::js_binding);
 	window_class
 		.set("destroy", &window::destroy)
 		.set("on", &window::on)

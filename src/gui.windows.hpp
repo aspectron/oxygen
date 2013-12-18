@@ -25,7 +25,7 @@ public:
 
 	operator HWND() const { return hwnd_; }
 
-	window& on(std::string const& name, v8::Handle<v8::Value> fn);
+	window& on(std::string const& name, v8::Handle<v8::Function> fn);
 	window& off(std::string const& name);
 
 	void set_window_rect(uint32_t left, uint32_t top, uint32_t width, uint32_t height);

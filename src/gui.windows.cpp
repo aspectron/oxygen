@@ -376,7 +376,7 @@ void window::use_as_splash_screen(std::wstring const& filename)
 void window::v8_process_message(uint32_t message, uint32_t wparam, uint32_t lparam)
 {
 	v8::Handle<v8::Value> args[3] = { v8pp::to_v8(message), v8pp::to_v8(wparam), v8pp::to_v8(lparam) };
-	event_handlers_.call("message", v8pp::to_v8(this)->ToObject(), 3, args);
+	emit("message", 3, args);
 }
 
 void window::show( bool visible )
@@ -501,7 +501,7 @@ v8::Handle<v8::Value> window::get_client_rect( v8::Arguments const& )
 	return to_v8(rc);
 }
 
-window& window::on(std::string const& name, Handle<Value> fn)
+window& window::on(std::string const& name, Handle<Function> fn)
 {
 	if (name == "message")
 	{
@@ -512,7 +512,7 @@ window& window::on(std::string const& name, Handle<Value> fn)
 		runtime::main_loop().schedule(boost::bind(&window::drag_accept_files_enable_impl, this, true));
 	}
 
-	event_handlers_.on(name, fn);
+	window_base::on(name, fn);
 	return *this;
 }
 
@@ -527,7 +527,7 @@ window& window::off(std::string const& name)
 		runtime::main_loop().schedule(boost::bind(&window::drag_accept_files_enable_impl, this, false));
 	}
 
-	event_handlers_.off(name);
+	window_base::off(name);
 	return *this;
 }
 
@@ -558,7 +558,7 @@ void window::drag_accept_files(shared_wstrings files)
 	HandleScope scope;
 
 	v8::Handle<v8::Value> args[1] = { v8pp::to_v8(*files) };
-	event_handlers_.call("drag_accept_files", v8pp::to_v8(this)->ToObject(), 1, args);
+	emit("drag_accept_files", 1, args);
 }
 
 input_event::input_event(UINT message, WPARAM wparam, LPARAM lparam)
