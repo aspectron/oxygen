@@ -2,6 +2,8 @@
 
 #if OS(WINDOWS)
 
+#include <boost/iostreams/device/mapped_file.hpp>
+
 #include "shellapi.h"
 
 using namespace v8;
