@@ -226,6 +226,11 @@ void window::update_window_size()
 	}
 }
 
+void window::set_cursor(HCURSOR cursor)
+{
+	cursor_= cursor;
+}
+
 void window::show_mouse_cursor(bool show)
 {
 	cursor_= (show? LoadCursor(NULL, IDC_ARROW) : NULL);

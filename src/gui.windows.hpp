@@ -37,6 +37,7 @@ public:
 	void use_as_splash_screen(std::wstring const& filename);
 	void load_icon_from_file(std::wstring const& filename);
 
+	void set_cursor(HCURSOR cursor);
 	void show_mouse_cursor(bool show);
 	void show(bool visible);
 	void switch_to_fullscreen(video_mode const& mode);
