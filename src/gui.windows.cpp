@@ -571,8 +571,8 @@ input_event::input_event(UINT message, WPARAM wparam, LPARAM lparam)
 		type_and_state_ = mouse_type_and_state(message, wparam);
 		data_.mouse.x = (int)LOWORD(lparam);
 		data_.mouse.y = (int)HIWORD(lparam);
-		data_.mouse.dx = (message == WM_MOUSEWHEEL? 0 : GET_WHEEL_DELTA_WPARAM(wparam) / WHEEL_DELTA);
-		data_.mouse.dy = (message == WM_MOUSEHWHEEL? 0 : GET_WHEEL_DELTA_WPARAM(wparam) / WHEEL_DELTA);
+		data_.mouse.dx = (message == WM_MOUSEWHEEL? 0 : GET_WHEEL_DELTA_WPARAM(wparam));
+		data_.mouse.dy = (message == WM_MOUSEHWHEEL? 0 : GET_WHEEL_DELTA_WPARAM(wparam));
 		repeats_ = (type() == MOUSE_CLICK? 2 : 0);
 	}
 	else if (message >= WM_KEYDOWN && message <= WM_CHAR)
