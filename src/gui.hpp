@@ -20,9 +20,9 @@ enum window_style
 
 struct OXYGEN_API creation_args
 {
-	int32_t left, top;
-	uint32_t width, height;
-	uint32_t bpp, style;
+	int left, top, width, height;
+	unsigned bpp, style;
+
 #if OS(WINDOWS)
 	std::wstring caption;
 	std::wstring splash;
@@ -31,7 +31,6 @@ struct OXYGEN_API creation_args
 	std::string splash;
 #endif
 
-	creation_args();
 	explicit creation_args(v8::Arguments const& args);
 };
 

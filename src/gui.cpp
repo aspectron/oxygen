@@ -4,45 +4,23 @@ namespace aspect {  namespace gui {
 
 using namespace v8;
 
-creation_args::creation_args()
-{
-	width = 800;
-	height = 600;
-	left = max(int(get_current_video_mode().width - width) / 2, 0);
-	top = max(int(get_current_video_mode().height - height) / 2, 0);
-	bpp = 32;
-	style = GWS_TITLEBAR | GWS_RESIZE | GWS_CLOSE | GWS_APPWINDOW;
-}
-
 creation_args::creation_args(Arguments const& args)
 {
 	HandleScope scope;
 
 	Handle<Object> options = args[0]->ToObject();
-	if (options.IsEmpty())
+	if (options.IsEmpty() || options->IsUndefined())
 	{
 		throw std::runtime_error("Window constructor requires configuration object as an argument");
 	}
 
-	if (get_option(options, "width", width = 800))
-	{
-		width = min(width, 1024*10u);
-	}
-	if (get_option(options, "height", height = 600))
-	{
-		height = min(height, 1024*10u);
-	}
+	video_mode const& curr_mode = get_current_video_mode();
 
-	if (!get_option(options, "left", left))
-	{
-		left = max(int(get_current_video_mode().width - width) / 2, 0);
-	}
-	if (!get_option(options, "top", top))
-	{
-		top = max(int(get_current_video_mode().height - height) / 2, 0);
-	}
-
-	get_option(options, "bpp", bpp = 32);
+	get_option(options, "width", width = curr_mode.width);
+	get_option(options, "height", height = curr_mode.height);
+	get_option(options, "left", left = max(int(curr_mode.width - width) / 2, 0));
+	get_option(options, "top", top = max(int(curr_mode.height - height) / 2, 0));
+	get_option(options, "bpp", bpp = curr_mode.bpp);
 	get_option(options, "style", style = GWS_TITLEBAR | GWS_RESIZE | GWS_CLOSE | GWS_APPWINDOW);
 	get_option(options, "caption", caption);
 	get_option(options, "splash", splash);

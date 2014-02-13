@@ -158,16 +158,23 @@ void window::create(creation_args args)
 	{
 		window_style |= WS_OVERLAPPEDWINDOW;
 	}
-	RECT window_rect;
-	window_rect.left = args.left;
-	window_rect.top = args.top;
-	window_rect.right = window_rect.left + args.width;
-	window_rect.bottom = window_rect.top + args.height;
 
 	// In windowed mode, adjust width and height so that window will have the requested client area
 	if (!(style_ & GWS_FULLSCREEN))
 	{
-		AdjustWindowRect(&window_rect, window_style, false);
+		if (args.width <= 0 || args.height <= 0)
+		{
+			args.left = args.top = args.width = args.height = CW_USEDEFAULT;
+		}
+		else
+		{
+			RECT window_rect = { args.left, args.top, args.left + args.width, args.top + args.width };
+			AdjustWindowRect(&window_rect, window_style, false);
+			args.left = window_rect.left;
+			args.top = window_rect.top;
+			args.width = window_rect.right - window_rect.left;
+			args.height = window_rect.bottom - window_rect.top;
+		}
 	}
 
 	if (args.splash.empty() && (args.style & GWS_HIDDEN) == 0)
@@ -181,9 +188,7 @@ void window::create(creation_args args)
 #endif
 
 	hwnd_ = CreateWindowW(WINDOW_CLASS_NAME, caption.c_str(), window_style,
-		window_rect.left, window_rect.top,
-		window_rect.right - window_rect.left, window_rect.bottom - window_rect.top,
-		NULL, NULL, GetModuleHandle(NULL), this);
+		args.left, args.top, args.width, args.height, NULL, NULL, GetModuleHandle(NULL), this);
 	// Switch to fullscreen if requested
 	if ((style_ & GWS_FULLSCREEN))
 	{
@@ -309,10 +314,14 @@ bool window::process_event(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& 
 		break;
 
 	case WM_SETCURSOR:
-		::SetCursor(cursor_);
-		result = TRUE;
-		return true;
-
+		if (LOWORD(lparam) == HTCLIENT)
+		{
+			// set custom cursor for client area only
+			::SetCursor(cursor_);
+			result = TRUE;
+			return true;
+		}
+		break;
 	case WM_PAINT:
 		if (splash_bitmap_)
 		{
