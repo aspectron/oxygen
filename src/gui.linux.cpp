@@ -623,6 +623,44 @@ void window::set_focus()
 	XSetInputFocus(g_display, window_, RevertToParent, CurrentTime);
 }
 
+void window::set_window_rect(uint32_t left, uint32_t top, uint32_t width, uint32_t height)
+{
+	XWindowChanges changes;
+	changes.x = left;
+	changes.y = top;
+	changes.width = width;
+	changes.height = height;
+	XConfigureWindow(g_display, window_, CWX | CWY | CWWidth | CWHeight, &changes);
+}
+
+static Handle<Value> to_v8(int left, int top, int width, int height)
+{
+	HandleScope scope;
+
+	Handle<Object> o = Object::New();
+	set_option(o, "left",   left);
+	set_option(o, "top",    top);
+	set_option(o, "width",  width);
+	set_option(o, "height", height);
+
+	return scope.Close(o);
+}
+
+Handle<Value> window::get_window_rect(v8::Arguments const&)
+{
+	XWindowAttributes attributes;
+	XGetWindowAttributes(g_display, window_, &attributes);
+	return to_v8(attributes.x - attributes.border_width, attributes.y - attributes.border_width,
+		attributes.width + attributes.border_width, attributes.height + attributes.border_width);
+}
+
+Handle<Value> window::get_client_rect(v8::Arguments const&)
+{
+	XWindowAttributes attributes;
+	XGetWindowAttributes(g_display, window_, &attributes);
+	return to_v8(attributes.x, attributes.y, attributes.width, attributes.height);
+}
+
 void window::process_event(XEvent const& event)
 {
 	switch (event.type)
