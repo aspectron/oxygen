@@ -66,7 +66,7 @@ private:
 	bool switch_to_fullscreen(video_mode const& mode);
 	void _cleanup();
 
-	void process_event(XEvent const& event);
+	void process(XEvent& event);
 	static void process_events();
 
 private:

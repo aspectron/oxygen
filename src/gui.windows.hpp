@@ -52,7 +52,7 @@ private:
 
 	void create(creation_args args);
 	void update_window_size();
-	bool process_event(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& result);
+	bool process(event& e);
 
 	typedef std::vector<std::wstring> wstrings;
 	typedef boost::shared_ptr<wstrings> shared_wstrings;

@@ -48,16 +48,30 @@ struct graphics_settings
 	unsigned int antialiasing_level;
 };
 
+#if OS(WINDOWS)
+struct OXYGEN_API event
+{
+	UINT message;
+	WPARAM wparam;
+	LPARAM lparam;
+	LRESULT result;
+
+	event(UINT message, WPARAM wparam, LPARAM lparam)
+		: message(message)
+		, wparam(wparam)
+		, lparam(lparam)
+		, result(0)
+	{
+	} 
+};
+#else
+typedef XEvent event;
+#endif
+
 class OXYGEN_API input_event
 {
 public:
-#if OS(WINDOWS)
-	input_event(UINT message, WPARAM wparam, LPARAM lparam);
-#else
-	explicit input_event(XKeyEvent const& xkey);
-	explicit input_event(XButtonEvent const& xbutton);
-	explicit input_event(XMotionEvent const& xmotion);
-#endif
+	explicit input_event(event const& e);
 
 	enum event_type
 	{
@@ -210,14 +224,10 @@ public:
 	uint32_t width() const { return width_; }
 	uint32_t height() const { return height_; }
 
-#if OS(WINDOWS)
-	// message sinking mask
-	static UINT const SINKING = 0x80000000;
-
-	bool process_event_by_sink(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& result);
-#endif
-
 protected:
+	bool preprocess_by_sink(event& e);
+	bool postprocess_by_sink(event& e);
+
 	void on_resize(uint32_t width, uint32_t height);
 	void on_input(input_event const& e);
 	void on_event(std::string const& type);
@@ -250,11 +260,11 @@ public:
 		window_.event_sinks_.remove(this);
 	}
 
-#if OS(WINDOWS)
-	/// Process a message after window handler, return true on the message handled
-	/// Unmask message with window::SINKING to process the message before the window handler
-	virtual bool process_events(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& result) = 0;
-#endif
+	/// Process event before window handler, return true to stop futher processing
+	virtual bool preprocess(event& e) = 0;
+
+	/// Process event after window handler, return true to stop futher processing
+	virtual bool postprocess(event& e) = 0;
 
 private:
 	window_base& window_;

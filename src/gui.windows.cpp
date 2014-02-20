@@ -99,14 +99,11 @@ LRESULT CALLBACK window::window_proc(HWND hwnd, UINT message, WPARAM wparam, LPA
 		SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)wnd);
 	}
 
-	LRESULT result = 0;
-	bool proceed = false;
-	if (window* wnd = (window*)GetWindowLongPtr(hwnd, GWLP_USERDATA))
+	event e(message, wparam, lparam);
+	window* wnd = (window*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+	if (wnd && wnd->hwnd_ == hwnd && wnd->process(e))
 	{
-		if (wnd->hwnd_ == hwnd)
-		{
-			proceed = wnd->process_event(message, wparam, lparam, result);
-		}
+		return e.result;
 	}
 
 	/*
@@ -115,7 +112,7 @@ LRESULT CALLBACK window::window_proc(HWND hwnd, UINT message, WPARAM wparam, LPA
 		return 0;
 	*/
 
-	return proceed? result : ::DefWindowProc(hwnd, message, wparam, lparam);
+	return ::DefWindowProc(hwnd, message, wparam, lparam);
 }
 
 void window::init(creation_args const& args)
@@ -241,19 +238,19 @@ void window::show_mouse_cursor(bool show)
 	cursor_= (show? LoadCursor(NULL, IDC_ARROW) : NULL);
 }
 
-bool window::process_event(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& result)
+bool window::process(event& e)
 {
 	if (!hwnd_)
 	{
 		return false;
 	}
 
-	if (process_event_by_sink(message | SINKING, wparam, lparam, result))
+	if (preprocess_by_sink(e))
 	{
 		return true;
 	}
 
-	switch (message)
+	switch (e.message)
 	{
 	case WM_SIZE:
 		update_window_size();
@@ -292,12 +289,12 @@ bool window::process_event(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& 
 	case WM_KEYUP:
 	case WM_KEYDOWN:
 	case WM_CHAR:
-		on_input(input_event(message, wparam, lparam));
+		on_input(input_event(e));
 		break;
 
 	case WM_DROPFILES:
 		{
-			HDROP hDrop = (HDROP) wparam;
+			HDROP hDrop = (HDROP)e.wparam;
 			UINT const count = DragQueryFile(hDrop, (UINT)-1, NULL, NULL);
 			shared_wstrings files = boost::make_shared<wstrings>(count);
 			for (UINT i = 0; i < count; ++i)
@@ -314,7 +311,7 @@ bool window::process_event(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& 
 		break;
 
 	case WM_SETCURSOR:
-		if (LOWORD(lparam) == HTCLIENT)
+		if (LOWORD(e.lparam) == HTCLIENT)
 		{
 			// set custom cursor for client area only
 			::SetCursor(cursor_);
@@ -322,6 +319,7 @@ bool window::process_event(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& 
 			return true;
 		}
 		break;
+
 	case WM_PAINT:
 		if (splash_bitmap_)
 		{
@@ -336,13 +334,13 @@ bool window::process_event(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& 
 				0, 0, 0, bmi->bmiHeader.biHeight, data, bmi, DIB_RGB_COLORS);
 
 			::ReleaseDC(hwnd_, hdc);
-			result = 0;
+			e.result = 0;
 			return true;
 		}
 		break;
 	}
 
-	if (process_event_by_sink(message, wparam, lparam, result))
+	if (postprocess_by_sink(e))
 	{
 		return true;
 	}
@@ -350,7 +348,7 @@ bool window::process_event(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& 
 	if (message_handling_enabled_)
 	{
 		runtime::main_loop().schedule(boost::bind(&window::v8_process_message, this,
-			(uint32_t)message, (uint32_t)wparam, (uint32_t)lparam));
+			(uint32_t)e.message, (uint32_t)e.wparam, (uint32_t)e.lparam));
 		return true;
 	}
 	return false;
@@ -395,7 +393,7 @@ void window::v8_process_message(uint32_t message, uint32_t wparam, uint32_t lpar
 	emit("message", 3, args);
 }
 
-void window::show( bool visible )
+void window::show(bool visible)
 {
 	::ShowWindow(hwnd_, visible? SW_SHOW : SW_HIDE);
 }
@@ -509,7 +507,7 @@ v8::Handle<v8::Value> window::get_window_rect(Arguments const&)
 	return to_v8(rc);
 }
 
-v8::Handle<v8::Value> window::get_client_rect( v8::Arguments const& )
+v8::Handle<v8::Value> window::get_client_rect(v8::Arguments const&)
 {
 	RECT rc;
 	GetClientRect(hwnd_, &rc);
@@ -577,24 +575,24 @@ void window::drag_accept_files(shared_wstrings files)
 	emit("drag_accept_files", 1, args);
 }
 
-input_event::input_event(UINT message, WPARAM wparam, LPARAM lparam)
+input_event::input_event(event const& e)
 	: type_and_state_(UNKNOWN)
 {
-	if (message >= WM_MOUSEFIRST && message <= WM_MOUSELAST)
+	if (e.message >= WM_MOUSEFIRST && e.message <= WM_MOUSELAST)
 	{
-		type_and_state_ = mouse_type_and_state(message, wparam);
-		data_.mouse.x = (int)LOWORD(lparam);
-		data_.mouse.y = (int)HIWORD(lparam);
-		data_.mouse.dx = (message == WM_MOUSEWHEEL? 0 : GET_WHEEL_DELTA_WPARAM(wparam));
-		data_.mouse.dy = (message == WM_MOUSEHWHEEL? 0 : GET_WHEEL_DELTA_WPARAM(wparam));
+		type_and_state_ = mouse_type_and_state(e.message, e.wparam);
+		data_.mouse.x = (int)LOWORD(e.lparam);
+		data_.mouse.y = (int)HIWORD(e.lparam);
+		data_.mouse.dx = (e.message == WM_MOUSEWHEEL? 0 : GET_WHEEL_DELTA_WPARAM(e.wparam));
+		data_.mouse.dy = (e.message == WM_MOUSEHWHEEL? 0 : GET_WHEEL_DELTA_WPARAM(e.wparam));
 		repeats_ = (type() == MOUSE_CLICK? 2 : 0);
 	}
-	else if (message >= WM_KEYDOWN && message <= WM_CHAR)
+	else if (e.message >= WM_KEYDOWN && e.message <= WM_CHAR)
 	{
-		type_and_state_ = key_type_and_state(message);
-		data_.key.vk_code = static_cast<uint32_t>(wparam);
-		data_.key.scancode = static_cast<uint32_t>(lparam);
-		repeats_ = LOWORD(lparam);
+		type_and_state_ = key_type_and_state(e.message);
+		data_.key.vk_code = static_cast<uint32_t>(e.wparam);
+		data_.key.scancode = static_cast<uint32_t>(e.lparam);
+		repeats_ = LOWORD(e.lparam);
 	}
 }
 

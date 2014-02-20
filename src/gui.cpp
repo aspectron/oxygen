@@ -1,5 +1,7 @@
 #include "oxygen.hpp"
 
+#include <boost/algorithm/cxx11/any_of.hpp>
+
 namespace aspect {  namespace gui {
 
 using namespace v8;
@@ -102,7 +104,7 @@ input_event input_event::from_v8(v8::Handle<v8::Value> value)
 
 	HandleScope scope;
 	Handle<Object> object = value.As<Object>();
-	if (object.IsEmpty())
+	if (object.IsEmpty() || object == Undefined())
 	{
 		return result;
 	}
@@ -116,8 +118,8 @@ input_event input_event::from_v8(v8::Handle<v8::Value> value)
 		return result;
 	}
 
-	Handle<Object> modifiers = object->Get(String::New("modifiers"))->ToObject();
-	if (!modifiers.IsEmpty())
+	Handle<Object> modifiers;
+	if (get_option(object, "modifiers", modifiers))
 	{
 		bool b;
 
@@ -161,6 +163,18 @@ input_event input_event::from_v8(v8::Handle<v8::Value> value)
 	}
 
 	return result;
+}
+
+bool window_base::preprocess_by_sink(event& e)
+{
+	return boost::algorithm::any_of(event_sinks_.begin(), event_sinks_.end(),
+		[&e](event_sink* sink) { return sink->preprocess(e); });
+}
+
+bool window_base::postprocess_by_sink(event& e)
+{
+	return boost::algorithm::any_of(event_sinks_.begin(), event_sinks_.end(),
+		[&e](event_sink* sink) { return sink->postprocess(e); });
 }
 
 void window_base::on_resize(uint32_t width, uint32_t height)
@@ -212,18 +226,5 @@ void window_base::on_event_v8(std::string type)
 	emit(type, 0, nullptr);
 }
 
-#if OS(WINDOWS)
-bool window_base::process_event_by_sink(UINT message, WPARAM wparam, LPARAM lparam, LRESULT& result)
-{
-	for (event_sinks::iterator it = event_sinks_.begin(), end = event_sinks_.end(); it != end; ++it)
-	{
-		if ( (*it)->process_events(message, wparam, lparam, result))
-		{
-			return true;
-		}
-	}
-	return false;
-}
-#endif
-
 }} // aspect::gui
+
