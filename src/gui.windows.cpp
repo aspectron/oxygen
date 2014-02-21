@@ -315,7 +315,7 @@ bool window::process(event& e)
 		{
 			// set custom cursor for client area only
 			::SetCursor(cursor_);
-			result = TRUE;
+			e.result = TRUE;
 			return true;
 		}
 		break;
