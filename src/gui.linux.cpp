@@ -29,6 +29,13 @@ static char const* event_names[] = {
 };
 */
 
+static window* get_window(XEvent const& event)
+{
+	XPointer window_ptr = nullptr;
+	XFindContext(g_display, event.xany.window, window_context, &window_ptr);
+	return reinterpret_cast<window*>(window_ptr);
+}
+
 void window::init()
 {
 	XInitThreads();
@@ -86,11 +93,9 @@ void window::process_events()
 			XNextEvent(g_display, &event);
 //			trace("%s\n", event_names[event.type]);
 
-			XPointer window_ptr = nullptr;
-			XFindContext(g_display, event.xany.window, window_context, &window_ptr);
-			if (window_ptr)
+			if (window* wnd = get_window(event))
 			{
-				reinterpret_cast<window*>(window_ptr)->process(event);
+				wnd->process(event);
 			}
 		}
 
@@ -836,16 +841,43 @@ uint32_t input_event::type_and_state(int type, unsigned int state)
 	return result;
 }
 
-input_event::input_event(XEvent const& e)
+unsigned to_key_code(unsigned code)
+{
+	unsigned const key_sym = XkbKeycodeToKeysym(g_display, code, 0, 0);
+	switch (key_sym)
+	{
+	case XK_KP_Enter:
+		return XK_Return;
+	default:
+		return key_sym;
+	}
+}
+
+input_event::input_event(event const& e)
 {
 	switch (e.type)
 	{
 	case KeyPress:
 	case KeyRelease:
-		type_and_state_ = type_and_state(e.type, e.xkey.state);
-		data_.key.vk_code = XkbKeycodeToKeysym(g_display, e.xkey.keycode, 0, 0);
-		data_.key.scancode = e.xkey.keycode;
-		repeats_ = 0;
+		if (window* wnd = get_window(e))
+		{
+			KeySym key_sym;
+			char chars[6] = {};
+			int const chars_len = Xutf8LookupString(wnd->input_context_, const_cast<XKeyEvent*>(&e.xkey),
+				chars, sizeof(chars), &key_sym, NULL);
+
+			type_and_state_ = type_and_state(e.type, e.xkey.state);
+			data_.key.vk_code = to_key_code(e.xkey.keycode);
+			data_.key.scan_code = e.xkey.keycode;
+			if (e.type == KeyPress)
+			{
+				wnd->pressed_key_code_ = key_sym;
+				utils::from_utf8(chars, chars + chars_len, &wnd->pressed_char_code_);
+			}
+			data_.key.key_code = wnd->pressed_key_code_;
+			data_.key.char_code = wnd->pressed_char_code_;
+			repeats_ = 0;
+		}
 		break;
 	case ButtonPress:
 	case ButtonRelease:
@@ -853,7 +885,7 @@ input_event::input_event(XEvent const& e)
 		data_.mouse.x = e.xbutton.x;
 		data_.mouse.y = e.xbutton.y;
 		data_.mouse.dx = data_.mouse.dy = 0;
-		repeats_ = 0;
+		repeats_ = 1;
 		switch (e.xbutton.button)
 		{
 			// Left, Middle, Right mouse buttons

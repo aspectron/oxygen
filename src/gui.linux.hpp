@@ -76,6 +76,11 @@ private:
 	Cursor hidden_cursor_;
 	XIC input_context_;
 	XVisualInfo current_visual_;
+
+	uint32_t pressed_key_code_;
+	uint32_t pressed_char_code_;
+	
+	friend class input_event; // to access input_context_
 };
 
 }} // aspect::gui

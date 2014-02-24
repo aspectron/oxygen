@@ -79,11 +79,19 @@ Handle<Value> input_event::to_v8() const
 		if (is_key())
 		{
 			set_option(object, "vk_code",  vk_code());
-			set_option(object, "scancode", scancode());
-			set_option(object, "charcode", character());
+			set_option(object, "scan_code", scan_code());
+			set_option(object, "key_code", key_code());
 
-			char const ch = character();
-			if (isascii(ch)) set_option(object, "char", std::string(1, ch));
+			uint32_t const ch = character();
+#if OS(WINDOWS)
+			set_option(object, "char", std::wstring(ch? 1 : 0, static_cast<wchar_t>(ch));
+#else
+			std::string str;
+			if (ch) utils::to_utf8(&ch, &ch + 1, std::back_inserter(str));
+			set_option(object, "char", str);
+			char const* const keysym = XKeysymToString(vk_code());
+			set_option(object, "key_sym", keysym? keysym : "");
+#endif
 		}
 		else if (is_mouse())
 		{
@@ -146,10 +154,23 @@ input_event input_event::from_v8(v8::Handle<v8::Value> value)
 
 	if (result.is_key())
 	{
-		get_option(object, "vk_code",  result.data_.key.vk_code = 0)
-			|| get_option(object, "charcode", result.data_.key.vk_code)
-			|| get_option(object, "char", result.data_.key.vk_code);
-		get_option(object, "scancode", result.data_.key.scancode = 0);
+		get_option(object, "vk_code",  result.data_.key.vk_code = 0);
+		get_option(object, "scan_code", result.data_.key.scan_code = 0);
+		get_option(object, "key_code",  result.data_.key.key_code = 0);
+		result.data_.key.char_code = 0;
+#if OS(WINDOWS)
+		std::wstring str;
+		if (get_option(object, "char", str) && !str.empty())
+		{
+			result.data_.key.char_code = str[0];
+		}
+#else
+		std::string str;
+		if (get_option(object, "char", str) && !str.empty())
+		{
+			utils::from_utf8(str.begin(), str.end(), &result.data_.key.char_code);
+		}
+#endif
 	}
 	else if (result.is_mouse())
 	{

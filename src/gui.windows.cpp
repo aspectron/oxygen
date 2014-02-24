@@ -591,7 +591,9 @@ input_event::input_event(event const& e)
 	{
 		type_and_state_ = key_type_and_state(e.message);
 		data_.key.vk_code = static_cast<uint32_t>(e.wparam);
-		data_.key.scancode = static_cast<uint32_t>(e.lparam);
+		data_.key.scan_code = static_cast<uint32_t>(e.lparam);
+		data_.key.key_code =  static_cast<uint32_t>(e.wparam);
+		data_.key.char_code = static_cast<uint32_t>(e.message == WM_CHAR || isascii(e.wparam)? e.wparam : 0);
 		repeats_ = LOWORD(e.lparam);
 	}
 }

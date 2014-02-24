@@ -130,14 +130,17 @@ public:
 public:
 // Key events
 
-	// Virtual key code
+	// System dependent virtual key code, see key_code enum in keys.hpp
 	uint32_t vk_code() const { return data_.key.vk_code; }
 
-	// OEM scan code
-	uint32_t scancode() const { return data_.key.scancode; }
+	// Keyboard OEM scan code
+	uint32_t scan_code() const { return data_.key.scan_code; }
+
+	// Native key code
+	uint32_t key_code() const { return data_.key.key_code; }
 
 	// Character for KEY_CHAR event
-	int character() const { return static_cast<int>(data_.key.vk_code); }
+	uint32_t character() const { return data_.key.char_code; }
 
 	// Click count for MOUSE_CLICK event, repeat count for KEY_DOWN event
 	uint32_t repeats() const { return repeats_; }
@@ -198,7 +201,9 @@ private:
 		struct key_data
 		{
 			uint32_t vk_code;
-			uint32_t scancode;
+			uint32_t scan_code;
+			uint32_t key_code;
+			uint32_t char_code;
 		} key;
 	} data_;
 
