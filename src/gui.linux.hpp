@@ -6,6 +6,7 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrandr.h>
 
+#include "geometry.hpp"
 #include "gui.hpp"
 
 namespace aspect { namespace gui {
@@ -48,13 +49,13 @@ public:
 	void show_mouse_cursor(bool show);
 	void show(bool visible);
 	void set_focus();
+	void toggle_fullscreen() {}
+
+	rectangle<int> rect() const;
+	void set_rect(rectangle<int> const& rect);
 
 	void show_frame(bool show) { }
 	void set_topmost(bool topmost) { }
-
-	void set_window_rect(uint32_t left, uint32_t top, uint32_t width, uint32_t height);
-	v8::Handle<v8::Value> get_window_rect(v8::Arguments const&);
-	v8::Handle<v8::Value> get_client_rect(v8::Arguments const&);
 
 	void load_icon_from_file(std::string const&) { }
 	void use_as_splash_screen(std::string filename) { }

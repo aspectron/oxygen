@@ -118,7 +118,7 @@ LRESULT CALLBACK window::window_proc(HWND hwnd, UINT message, WPARAM wparam, LPA
 void window::init(creation_args const& args)
 {
 	hwnd_ = nullptr;
-	width_ = height_ = 0;
+	size_.width = size_.height = 0;
 	cursor_ = LoadCursor(NULL, IDC_ARROW);
 	fullscreen_ = false;
 	message_handling_enabled_ = false;
@@ -223,8 +223,8 @@ void window::update_window_size()
 	RECT client_rect;
 	if (GetClientRect(hwnd_, &client_rect))
 	{
-		width_  = client_rect.right - client_rect.left;
-		height_ = client_rect.bottom - client_rect.top;
+		size_.width  = client_rect.right - client_rect.left;
+		size_.height = client_rect.bottom - client_rect.top;
 	}
 }
 
@@ -254,7 +254,7 @@ bool window::process(event& e)
 	{
 	case WM_SIZE:
 		update_window_size();
-		on_resize(width_, height_);
+		on_resize(size_);
 		break;
 
 	case WM_DESTROY:
@@ -431,25 +431,34 @@ void window::switch_to_fullscreen(video_mode const& mode)
 	update_window_size();
 }
 
-/*
-void window::toggle_fullscreen(void)
+void window::toggle_fullscreen()
 {
-	if(fullscreen_)
+	DWORD const style = GetWindowLong(hwnd_, GWL_STYLE);
+
+	fullscreen_ = !fullscreen_;
+	if (fullscreen_)
 	{
-		WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_VISIBLE
-		SetWindowLong(hwnd_, GWL_STYLE,   WS_POPUP);
-		SetWindowLong(hwnd_, GWL_EXSTYLE, WS_EX_APPWINDOW);
+		prev_placement_.length = sizeof(prev_placement_);
+		GetWindowPlacement(hwnd_, &prev_placement_);
+
+		MONITORINFO mi;
+		mi.cbSize = sizeof(mi);
+		GetMonitorInfo(MonitorFromWindow(hwnd_, MONITOR_DEFAULTTOPRIMARY), &mi);
+
+		SetWindowLong(hwnd_, GWL_STYLE, style & ~WS_OVERLAPPEDWINDOW);
+		SetWindowPos(hwnd_, HWND_TOP, mi.rcMonitor.left, mi.rcMonitor.top,
+			mi.rcMonitor.right - mi.rcMonitor.left, mi.rcMonitor.bottom - mi.rcMonitor.top,
+			SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
 	}
 	else
 	{
-		// Change window style (no border, no titlebar, ...)
-		SetWindowLong(hwnd_, GWL_STYLE,   WS_POPUP);
-		SetWindowLong(hwnd_, GWL_EXSTYLE, WS_EX_APPWINDOW);
-
-		ShowWindow(hwnd_,SW_MAXIMIZE);
+		SetWindowLong(hwnd_, GWL_STYLE, style | WS_OVERLAPPEDWINDOW);
+		SetWindowPos(hwnd_, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE /*| SWP_NOZORDER |
+                 SWP_NOOWNERZORDER*/ | SWP_FRAMECHANGED);
+		SetWindowPlacement(hwnd_, &prev_placement_);
 	}
+//	update_window_size();
 }
-*/
 
 void window::set_focus()
 {
@@ -459,60 +468,30 @@ void window::set_focus()
 
 void window::show_frame(bool show)
 {	
-	if(show)
-	{
-		SetWindowLong(hwnd_, GWL_STYLE,   WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_VISIBLE);
-//		SetWindowLong(hwnd_, GWL_EXSTYLE, WS_EX_APPWINDOW);
-	}
-	else
-	{
-		SetWindowLong(hwnd_, GWL_STYLE,   WS_POPUP | WS_CLIPCHILDREN | WS_VISIBLE);
-//		SetWindowLong(hwnd_, GWL_EXSTYLE, WS_EX_APPWINDOW);
-//		SetWindowPos(hwnd_, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOREPOSITION);
-	}
+	DWORD const style = GetWindowLong(hwnd_, GWL_STYLE);
+	DWORD const frame_style = WS_CAPTION | WS_THICKFRAME;
 
-	update_window_size();
-}
-
-void window::set_window_rect(uint32_t left, uint32_t top, uint32_t width, uint32_t height)
-{
-	SetWindowPos(hwnd_, NULL, left, top, width, height, 0);
+	SetWindowLong(hwnd_, GWL_STYLE, show? style | frame_style : style & ~frame_style);
+	SetWindowPos(hwnd_, 0, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 	update_window_size();
 }
 
 void window::set_topmost(bool topmost)
 {
-	SetWindowPos(hwnd_, topmost? HWND_TOP : NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOREPOSITION);
+	SetWindowPos(hwnd_, topmost? HWND_TOP : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOREPOSITION);
 }
 
-static Handle<Value> to_v8(RECT const& rc)
-{
-	HandleScope scope;
-
-	Handle<Object> o = Object::New();
-
-	set_option(o, "left",   rc.left);
-	set_option(o, "top",    rc.top);
-	set_option(o, "width",  rc.right - rc.left);
-	set_option(o, "height", rc.bottom - rc.top);
-
-	return scope.Close(o);
-}
-
-v8::Handle<v8::Value> window::get_window_rect(Arguments const&)
+rectangle<int> window::rect() const
 {
 	RECT rc;
 	GetWindowRect(hwnd_, &rc);
-
-	return to_v8(rc);
+	return rectangle<int>(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
 }
 
-v8::Handle<v8::Value> window::get_client_rect(v8::Arguments const&)
+void window::set_rect(rectangle<int> const& rect)
 {
-	RECT rc;
-	GetClientRect(hwnd_, &rc);
-
-	return to_v8(rc);
+	SetWindowPos(hwnd_, NULL, rect.left, rect.top, rect.width, rect.height, 0);
+	update_window_size();
 }
 
 window& window::on(std::string const& name, Handle<Function> fn)
@@ -593,7 +572,7 @@ input_event::input_event(event const& e)
 		data_.key.vk_code = static_cast<uint32_t>(e.wparam);
 		data_.key.scan_code = static_cast<uint32_t>(e.lparam);
 		data_.key.key_code =  static_cast<uint32_t>(e.wparam);
-		data_.key.char_code = static_cast<uint32_t>(e.message == WM_CHAR || isascii(e.wparam)? e.wparam : 0);
+		data_.key.char_code = static_cast<uint32_t>(e.message == WM_CHAR? e.wparam : 0);
 		repeats_ = LOWORD(e.lparam);
 	}
 }

@@ -307,8 +307,8 @@ void window::create(creation_args const& args)
 	bool const fullscreen = (style_ & GWS_FULLSCREEN) != 0;
 
 	// Compute position and size
-	int const width = width_ = args.width;
-	int const height = height_ = args.height;
+	int const width = size_.width = args.width;
+	int const height = size_.height = args.height;
 
 	int const left = fullscreen? 0 : args.left;
 	int const top = fullscreen? 0 : args.top;
@@ -626,42 +626,21 @@ void window::set_focus()
 	XSetInputFocus(g_display, window_, RevertToParent, CurrentTime);
 }
 
-void window::set_window_rect(uint32_t left, uint32_t top, uint32_t width, uint32_t height)
+rectangle<int> window::rect() const
+{
+	XWindowAttributes attributes;
+	XGetWindowAttributes(g_display, window_, &attributes);
+	return rectangle<int>(attributes.x, attributes.y, attributes.width, attributes.height);
+}
+
+void window::set_rect(rectangle<int> const& rect)
 {
 	XWindowChanges changes;
-	changes.x = left;
-	changes.y = top;
-	changes.width = width;
-	changes.height = height;
+	changes.x = rect.left;
+	changes.y = rect.top;
+	changes.width = rect.width;
+	changes.height = rect.height;
 	XConfigureWindow(g_display, window_, CWX | CWY | CWWidth | CWHeight, &changes);
-}
-
-static Handle<Value> to_v8(int left, int top, int width, int height)
-{
-	HandleScope scope;
-
-	Handle<Object> o = Object::New();
-	set_option(o, "left",   left);
-	set_option(o, "top",    top);
-	set_option(o, "width",  width);
-	set_option(o, "height", height);
-
-	return scope.Close(o);
-}
-
-Handle<Value> window::get_window_rect(v8::Arguments const&)
-{
-	XWindowAttributes attributes;
-	XGetWindowAttributes(g_display, window_, &attributes);
-	return to_v8(attributes.x - attributes.border_width, attributes.y - attributes.border_width,
-		attributes.width + attributes.border_width, attributes.height + attributes.border_width);
-}
-
-Handle<Value> window::get_client_rect(v8::Arguments const&)
-{
-	XWindowAttributes attributes;
-	XGetWindowAttributes(g_display, window_, &attributes);
-	return to_v8(attributes.x, attributes.y, attributes.width, attributes.height);
 }
 
 void window::process(XEvent& event)
@@ -696,11 +675,11 @@ void window::process(XEvent& event)
 
 	// Resize event
 	case ConfigureNotify:
-		if (event.xconfigure.width != width_ || event.xconfigure.height != height_)
+		if (event.xconfigure.width != size_.width || event.xconfigure.height != size_.height)
 		{
-			width_  = event.xconfigure.width;
-			height_ = event.xconfigure.height;
-			on_resize(width_, height_);
+			size_.width = event.xconfigure.width;
+			size_.height = event.xconfigure.height;
+			on_resize(size_);
 		}
 		break;
 

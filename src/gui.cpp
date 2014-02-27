@@ -198,11 +198,11 @@ bool window_base::postprocess_by_sink(event& e)
 		[&e](event_sink* sink) { return sink->postprocess(e); });
 }
 
-void window_base::on_resize(uint32_t width, uint32_t height)
+void window_base::on_resize(box<int> const& new_size)
 {
 	if (has("resize"))
 	{
-		runtime::main_loop().schedule(boost::bind(&window_base::on_resize_v8, this, width, height));
+		runtime::main_loop().schedule(boost::bind(&window_base::on_resize_v8, this, new_size));
 	}
 }
 
@@ -222,15 +222,11 @@ void window_base::on_event(std::string const& type)
 	}
 }
 
-void window_base::on_resize_v8(uint32_t width, uint32_t height)
+void window_base::on_resize_v8(box<int> new_size)
 {
 	v8::HandleScope scope;
 
-	v8::Handle<v8::Object> o = v8::Object::New();
-	set_option(o, "width", width);
-	set_option(o, "height", height);
-
-	v8::Handle<v8::Value> args[1] = { o };
+	v8::Handle<v8::Value> args[1] = { v8pp::to_v8(new_size) };
 	emit("resize", 1, args);
 }
 

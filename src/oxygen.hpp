@@ -21,6 +21,7 @@
 #define OXYGEN_API // nothing, symbols in a shared library are exported by default
 #endif
 
+#include "geometry.hpp"
 #include "video_modes.hpp"
 #include "gui.hpp"
 #if OS(WINDOWS)

@@ -6,6 +6,9 @@
 #include <boost/atomic.hpp>
 #include <boost/scoped_array.hpp>
 
+#include "geometry.hpp"
+#include "gui.hpp"
+
 namespace aspect { namespace gui {
 
 class OXYGEN_API window : public window_base
@@ -28,9 +31,8 @@ public:
 	window& on(std::string const& name, v8::Handle<v8::Function> fn);
 	window& off(std::string const& name);
 
-	void set_window_rect(uint32_t left, uint32_t top, uint32_t width, uint32_t height);
-	v8::Handle<v8::Value> get_window_rect(v8::Arguments const&);
-	v8::Handle<v8::Value> get_client_rect(v8::Arguments const&);
+	rectangle<int> rect() const;
+	void set_rect(rectangle<int> const& rect);
 
 	void show_frame(bool show);
 	void set_topmost(bool topmost);
@@ -42,7 +44,7 @@ public:
 	void show(bool visible);
 	void switch_to_fullscreen(video_mode const& mode);
 	void set_focus();
-
+	void toggle_fullscreen();
 private:
 	void init(creation_args const& args);
 
@@ -69,6 +71,7 @@ private:
 
 	HCURSOR cursor_;
 	bool fullscreen_;
+	WINDOWPLACEMENT prev_placement_;
 
 	bool message_handling_enabled_;
 	bool drag_accept_files_enabled_;

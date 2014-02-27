@@ -220,29 +220,30 @@ public:
 	typedef v8pp::class_<window_base, v8pp::no_factory> js_class;
 
 	window_base()
-		: width_(0)
-		, height_(0)
+		: size_(0, 0)
 		, style_(0)
 	{
 	}
 
-	uint32_t width() const { return width_; }
-	uint32_t height() const { return height_; }
+	box<int> const& size() const { return size_; }
+
+	int width() const { return size_.width; }
+	int height() const { return size_.height; }
 
 protected:
 	bool preprocess_by_sink(event& e);
 	bool postprocess_by_sink(event& e);
 
-	void on_resize(uint32_t width, uint32_t height);
+	void on_resize(box<int> const& new_size);
 	void on_input(input_event const& e);
 	void on_event(std::string const& type);
 
-	uint32_t width_, height_;
+	box<int> size_;
 	unsigned style_;
 
 private:
 //V8 handlers
-	void on_resize_v8(uint32_t width, uint32_t height);
+	void on_resize_v8(box<int> new_size);
 	void on_input_v8(input_event e);
 	void on_event_v8(std::string type);
 

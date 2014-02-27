@@ -6,19 +6,10 @@ namespace aspect { namespace gui {
 
 using namespace v8;
 
-Handle<Value> get_screen_size(Arguments const&)
+static rectangle<int> get_screen_rect()
 {
-	HandleScope scope;
-
 	video_mode const curr_mode = get_current_video_mode();
-
-	Handle<Object> result = Object::New();
-	set_option(result, "left", 0);
-	set_option(result, "top", 0);
-	set_option(result, "width", curr_mode.width);
-	set_option(result, "height", curr_mode.height);
-
-	return scope.Close(result);
+	return rectangle<int>(0, 0, curr_mode.width, curr_mode.height);
 }
 
 DECLARE_LIBRARY_ENTRYPOINTS(oxygen_install, oxygen_uninstall);
@@ -36,17 +27,17 @@ Handle<Value> oxygen_install()
 		.set("off", &window::off)
 		.set("width", v8pp::property(&window::width))
 		.set("height", v8pp::property(&window::height))
-		.set("get_client_rect", &window::get_client_rect)
-		.set("get_window_rect", &window::get_window_rect)
-		.set("set_window_rect", &window::set_window_rect)
+		.set("get_rect", &window::rect)
+		.set("set_rect", &window::set_rect)
 		.set("show_frame", &window::show_frame)
 		.set("set_topmost", &window::set_topmost)
 		.set("use_as_splash_screen", &window::use_as_splash_screen)
 		.set("load_icon_from_file", &window::load_icon_from_file)
+		.set("toggle_fullscreen", &window::toggle_fullscreen)
 		;
 	oxygen_module.set("window", window_class);
 
-	oxygen_module.set("get_screen_size", get_screen_size);
+	oxygen_module.set("get_screen_rect", &get_screen_rect);
 
 	v8pp::module styles;
 	styles.set_const("NONE", GWS_NONE);
