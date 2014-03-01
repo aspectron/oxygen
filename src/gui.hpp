@@ -280,28 +280,26 @@ private:
 
 namespace v8pp {
 
-namespace detail {
-
 template<>
-struct from_v8<aspect::gui::input_event>
+struct convert<aspect::gui::input_event>
 {
 	typedef aspect::gui::input_event result_type;
 
-	static result_type exec(v8::Handle<v8::Value> value)
+	static bool is_valid(v8::Handle<v8::Value> value)
+	{
+		return value->IsObject();
+	}
+
+	static result_type from_v8(v8::Handle<v8::Value> value)
 	{
 		return aspect::gui::input_event::from_v8(value);
 	}
+
+	static v8::Handle<v8::Value> to_v8(aspect::gui::input_event const& ev)
+	{
+		return ev.to_v8();
+	}
 };
-
-template<typename U>
-struct from_v8_ref<aspect::gui::input_event, U> : from_v8<aspect::gui::input_event> {};
-
-} // detail
-
-inline v8::Handle<v8::Value> to_v8(aspect::gui::input_event const& ev)
-{
-	return ev.to_v8();
-}
 
 } //v8pp
 
