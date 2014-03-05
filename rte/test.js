@@ -1,43 +1,35 @@
 pragma("event-queue");
 
-var log = require("log");
-
 var oxygen = require("oxygen");
 
-var screen_rect = oxygen.get_screen_rect();
-log.info("Screen size: " + screen_rect.width + "x" + screen_rect.height);
+console.log("Screen size:", oxygen.getScreenSize());
 
-log.info("Creating window...");
+console.log("Creating window...");
 
-var window = oxygen.window({
+var window = oxygen.Window({
 	width: 640,
 	height: 480,
 	bpp: 32,
 	caption: "oxygen",
-//	frame: true,
 	style : oxygen.styles.APPLICATION
 })
 
-log.info("Window created...");
+console.log("Window created...");
 
-window.on('resize', function(size)
-  { log.info("width: " + size.width + " height: " + size.height);});
-
-window.on('close', function()
-  { log.info("window closed");});
-
-window.on('mousemove', function(e) { log.info(e);});
-window.on('mousedown', function(e) { log.info(e);});
-window.on('mouseup', function(e) { log.info(e);});
-window.on('mousewheel', function(e) { log.info(e);});
-window.on('mouseclick', function(e) { log.info(e);});
-window.on('keydown', function(e) { log.info(e); if (e.vk_code == oxygen.keys.F11) window.toggle_fullscreen(); });
-window.on('keyup', function(e) { log.info(e);});
-window.on('char', function(e) { log.info(e);});
+window.on('resize', function(size) { console.log("resize:", size); });
+window.on('close', function()  { console.log("window closed"); });
+window.on('mousemove', function(e) { console.log(e); });
+window.on('mousedown', function(e) { console.log(e); });
+window.on('mouseup', function(e) { console.log(e); });
+window.on('mousewheel', function(e) { console.log(e); });
+window.on('mouseclick', function(e) { console.log(e); });
+window.on('keydown', function(e) { console.log(e); if (e.vk_code == oxygen.keys.F11) window.toggle_fullscreen(); });
+window.on('keyup', function(e) { console.log(e); });
+window.on('char', function(e) { console.log(e); });
 
 /*
 dpc(25000, function(){
-	log.info("Destroying window...");
+	console.log("Destroying window...");
 	window.destroy();
 })
 */
