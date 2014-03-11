@@ -4,12 +4,10 @@
 // All Rights Reserved.
 //
 
-var _ = require('underscore');
 
 var oxygen = (function()
 {
-    var bindings = require("bindings");
-    var oxygen = new bindings.library("oxygen");
+    var oxygen = new rt.bindings.library("oxygen");
 
     var self = oxygen;
 
@@ -25,32 +23,6 @@ var oxygen = (function()
     		}
     	});
     }
-
-    self.kbd = { }
-    self.kbd.VK_F1 = 0x70;
-    self.kbd.VK_F2 = 0x71;
-    self.kbd.VK_F3 = 0x72;
-    self.kbd.VK_F4 = 0x73;
-    self.kbd.VK_F5 = 0x74;
-    self.kbd.VK_F6 = 0x75;
-    self.kbd.VK_F7 = 0x76;
-    self.kbd.VK_F8 = 0x77;
-    self.kbd.VK_F9 = 0x78;
-    self.kbd.VK_F10 = 0x79;
-    self.kbd.VK_F11 = 0x7A;
-    self.kbd.VK_F12 = 0x7B;
-    self.kbd.VK_F13 = 0x7C;
-    self.kbd.VK_F14 = 0x7D;
-    self.kbd.VK_F15 = 0x7E;
-    self.kbd.VK_F16 = 0x7F;
-    self.kbd.VK_F17 = 0x80;
-    self.kbd.VK_F18 = 0x81;
-    self.kbd.VK_F19 = 0x82;
-    self.kbd.VK_F20 = 0x83;
-    self.kbd.VK_F21 = 0x84;
-    self.kbd.VK_F22 = 0x85;
-    self.kbd.VK_F23 = 0x86;
-    self.kbd.VK_F24 = 0x87;
 
     self._n2i = 
     {
