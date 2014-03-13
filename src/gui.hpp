@@ -51,13 +51,15 @@ struct graphics_settings
 #if OS(WINDOWS)
 struct OXYGEN_API event
 {
+	HWND window;
 	UINT message;
 	WPARAM wparam;
 	LPARAM lparam;
 	LRESULT result;
 
-	event(UINT message, WPARAM wparam, LPARAM lparam)
-		: message(message)
+	event(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
+		: window(window)
+		, message(message)
 		, wparam(wparam)
 		, lparam(lparam)
 		, result(0)

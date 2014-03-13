@@ -99,7 +99,7 @@ LRESULT CALLBACK window::window_proc(HWND hwnd, UINT message, WPARAM wparam, LPA
 		SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)wnd);
 	}
 
-	event e(message, wparam, lparam);
+	event e(hwnd, message, wparam, lparam);
 	window* wnd = (window*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 	if (wnd && wnd->hwnd_ == hwnd && wnd->process(e))
 	{
@@ -562,8 +562,17 @@ input_event::input_event(event const& e)
 		type_and_state_ = mouse_type_and_state(e.message, e.wparam);
 		data_.mouse.x = (int)LOWORD(e.lparam);
 		data_.mouse.y = (int)HIWORD(e.lparam);
-		data_.mouse.dx = (e.message == WM_MOUSEWHEEL? 0 : GET_WHEEL_DELTA_WPARAM(e.wparam));
-		data_.mouse.dy = (e.message == WM_MOUSEHWHEEL? 0 : GET_WHEEL_DELTA_WPARAM(e.wparam));
+		if (e.message == WM_MOUSEWHEEL || e.message == WM_MOUSEHWHEEL)
+		{
+			POINT pt;
+			pt.x = data_.mouse.x;
+			pt.y = data_.mouse.y;
+			ScreenToClient(e.window, &pt);
+			data_.mouse.x = pt.x;
+			data_.mouse.y = pt.y;
+		}
+		data_.mouse.dx = (e.message == WM_MOUSEHWHEEL? GET_WHEEL_DELTA_WPARAM(e.wparam) : 0);
+		data_.mouse.dy = (e.message == WM_MOUSEWHEEL?  GET_WHEEL_DELTA_WPARAM(e.wparam) : 0);
 		repeats_ = (type() == MOUSE_CLICK? 2 : 0);
 	}
 	else if (e.message >= WM_KEYDOWN && e.message <= WM_CHAR)
