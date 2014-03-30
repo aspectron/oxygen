@@ -165,7 +165,7 @@ void window::create(creation_args args)
 		}
 		else
 		{
-			RECT window_rect = { args.left, args.top, args.left + args.width, args.top + args.width };
+			RECT window_rect = { args.left, args.top, args.left + args.width, args.top + args.height };
 			AdjustWindowRect(&window_rect, window_style, false);
 			args.left = window_rect.left;
 			args.top = window_rect.top;
