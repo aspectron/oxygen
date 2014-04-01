@@ -179,12 +179,11 @@ void window::create(creation_args args)
 		window_style |= WS_VISIBLE;
 	}
 
-	std::wstring caption = args.caption;
 #if TARGET(DEBUG)
-	caption += L" (DEBUG)";
+	args.caption += L" (DEBUG)";
 #endif
 
-	hwnd_ = CreateWindowW(WINDOW_CLASS_NAME, caption.c_str(), window_style,
+	hwnd_ = CreateWindowW(WINDOW_CLASS_NAME, args.caption.c_str(), window_style,
 		args.left, args.top, args.width, args.height, NULL, NULL, GetModuleHandle(NULL), this);
 	// Switch to fullscreen if requested
 	if ((style_ & GWS_FULLSCREEN))
@@ -196,6 +195,11 @@ void window::create(creation_args args)
 	// Get the actual size of the window, which can be smaller even after the call to AdjustWindowRect
 	// This happens when the window is bigger than the desktop
 	update_window_size();
+
+	if (!args.icon.empty())
+	{
+		load_icon_from_file(args.icon);
+	}
 
 	if (!args.splash.empty())
 	{
@@ -526,17 +530,18 @@ window& window::off(std::string const& name)
 
 void window::load_icon_from_file(std::wstring const& file)
 {
-	HANDLE hIcon = LoadImageW(NULL, file.c_str(), IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
+	HANDLE hIcon = LoadImageW(NULL, file.c_str(), IMAGE_ICON,
+		GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON), LR_LOADFROMFILE);
 	if (hIcon)
 	{
-		PostMessage(hwnd_, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
-		return;
+		SendMessage(hwnd_, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
 	}
 
-	hIcon = LoadImageW(NULL, file.c_str(), IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
+	hIcon = LoadImageW(NULL, file.c_str(), IMAGE_ICON, 
+		GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_LOADFROMFILE);
 	if (hIcon)
 	{
-		PostMessage(hwnd_, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+		SendMessage(hwnd_, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
 	}
 }
 

@@ -26,6 +26,7 @@ creation_args::creation_args(Arguments const& args)
 	get_option(options, "style", style = GWS_TITLEBAR | GWS_RESIZE | GWS_CLOSE | GWS_APPWINDOW);
 	get_option(options, "caption", caption);
 	get_option(options, "splash", splash);
+	get_option(options, "icon", icon);
 }
 
 static char const* const types[] =

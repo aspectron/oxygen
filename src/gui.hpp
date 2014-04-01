@@ -26,9 +26,11 @@ struct OXYGEN_API creation_args
 #if OS(WINDOWS)
 	std::wstring caption;
 	std::wstring splash;
+	std::wstring icon;
 #else
 	std::string caption;
 	std::string splash;
+	std::string icon;
 #endif
 
 	explicit creation_args(v8::Arguments const& args);

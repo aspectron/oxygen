@@ -95,6 +95,7 @@ Handle<Value> oxygen_install()
 	  * `bpp` Window color depth (bits per pixel), default value is current video mode color depth.
 	  * `style` Set specific window style. See #styles
 	  * `caption` Window caption string.
+	  * `icon` Window icon file name (currently implemented in Windows only).
 	  * `splash` Splash image file name (currently implemented in Windows only).
 
 	  To set default window dimensions in Windows use zero for `width` and `height`.
@@ -150,11 +151,18 @@ Handle<Value> oxygen_install()
 		**/
 		.set("setRect", &window::set_rect)
 
+		/**
+		@function setIcon(filename)
+		@param filename {String}
+		Load and set window icon from a file with specified name.
+		Currently implemented in Windows only.
+		**/
+		.set("setIcon", &window::load_icon_from_file)
+
 		.set("show_frame", &window::show_frame)
 		.set("set_topmost", &window::set_topmost)
 
 		.set("use_as_splash_screen", &window::use_as_splash_screen)
-		.set("load_icon_from_file", &window::load_icon_from_file)
 		.set("toggle_fullscreen", &window::toggle_fullscreen)
 		;
 	oxygen_module.set("Window", window_class);
