@@ -56,6 +56,8 @@ void window::cleanup()
 
 void window::message_loop()
 {
+	os::set_thread_name("window::message_loop");
+
 	MSG msg;
 
 	// to create a message queue in this thread

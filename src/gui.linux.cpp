@@ -81,6 +81,8 @@ void window::cleanup()
 
 void window::process_events()
 {
+	os::set_thread_name("window::process_events");
+
 	int const fd = ConnectionNumber(g_display);
 	fd_set fds;
 
