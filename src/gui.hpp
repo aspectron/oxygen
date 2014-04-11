@@ -122,8 +122,11 @@ public:
 
 	// Mouse X coordinate
 	int x() const { return data_.mouse.x; }
+	int& x() { return data_.mouse.x; }
+
 	// Mouse Y coordinate
 	int y() const { return data_.mouse.y; }
+	int& y() { return data_.mouse.y; }
 
 	// Delta X for mouse wheel
 	int dx() const { return data_.mouse.dx; }
