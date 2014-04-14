@@ -4,7 +4,8 @@
 
 #include <boost/iostreams/device/mapped_file.hpp>
 
-#include "shellapi.h"
+#include <windowsx.h>
+#include <shellapi.h>
 
 using namespace v8;
 
@@ -567,8 +568,8 @@ input_event::input_event(event const& e)
 	if (e.message >= WM_MOUSEFIRST && e.message <= WM_MOUSELAST)
 	{
 		type_and_state_ = mouse_type_and_state(e.message, e.wparam);
-		data_.mouse.x = (int)LOWORD(e.lparam);
-		data_.mouse.y = (int)HIWORD(e.lparam);
+		data_.mouse.x = GET_X_LPARAM(e.lparam);
+		data_.mouse.y = GET_Y_LPARAM(e.lparam);
 		if (e.message == WM_MOUSEWHEEL || e.message == WM_MOUSEHWHEEL)
 		{
 			POINT pt;
