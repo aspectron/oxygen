@@ -18,8 +18,6 @@ extern XIM g_input_method;
 class OXYGEN_API window : public window_base
 {
 public:
-	typedef v8pp::class_<window, v8pp::v8_args_factory> js_class;
-
 	static void init();
 	static void cleanup();
 

@@ -223,9 +223,6 @@ class OXYGEN_API window_base : public v8_core::event_emitter
 {
 	friend class event_sink;
 public:
-
-	typedef v8pp::class_<window_base, v8pp::no_factory> js_class;
-
 	window_base()
 		: size_(0, 0)
 		, style_(0)

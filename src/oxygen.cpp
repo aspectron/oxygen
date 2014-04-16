@@ -101,8 +101,9 @@ Handle<Value> oxygen_install()
 	  To set default window dimensions in Windows use zero for `width` and `height`.
 	  If `left` and `top` is unspecified, the window is centered on the screen.
 	**/
-	window::js_class window_class(*v8_core::event_emitter::js_binding);
+	v8pp::class_<window> window_class(v8pp::v8_args_ctor);
 	window_class
+		.inherit<v8_core::event_emitter>()
 		/**
 		@function destroy()
 		Close and destroy window instance
@@ -268,7 +269,7 @@ Handle<Value> oxygen_install()
 
 void oxygen_uninstall(Handle<Value> library)
 {
-	window::js_class::destroy_objects();
+	v8pp::class_<window>::destroy_objects();
 	window::cleanup();
 }
 
