@@ -126,6 +126,7 @@ void window::init(creation_args const& args)
 	fullscreen_ = false;
 	message_handling_enabled_ = false;
 	drag_accept_files_enabled_ = false;
+	capture_count_ = 0;
 
 	post_thread_message(WM_USER, (WPARAM)this, (LPARAM)&args);
 
@@ -245,6 +246,26 @@ void window::show_mouse_cursor(bool show)
 	cursor_= (show? LoadCursor(NULL, IDC_ARROW) : NULL);
 }
 
+void window::capture_mouse(bool capture)
+{
+	if (capture)
+	{
+		if (++capture_count_ == 1) SetCapture(hwnd_);
+	}
+	else
+	{
+		if (--capture_count_ == 0) ReleaseCapture();
+	}
+}
+
+void window::set_mouse_pos(int x, int y)
+{
+	POINT pt;
+	pt.x = x; pt.y = y;
+	ClientToScreen(hwnd_, &pt);
+	SetCursorPos(pt.x, pt.y);
+}
+
 bool window::process(event& e)
 {
 	if (!hwnd_)
@@ -296,7 +317,19 @@ bool window::process(event& e)
 	case WM_KEYUP:
 	case WM_KEYDOWN:
 	case WM_CHAR:
-		on_input(input_event(e));
+		{
+			input_event const inp_e(e);
+			switch (inp_e.type())
+			{
+			case input_event::MOUSE_DOWN:
+				capture_mouse(true);
+				break;
+			case input_event::MOUSE_UP:
+				capture_mouse(false);
+				break;
+			}
+			on_input(inp_e);
+		}
 		break;
 
 	case WM_DROPFILES:

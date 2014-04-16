@@ -39,6 +39,8 @@ public:
 
 	void set_cursor(HCURSOR cursor);
 	void show_mouse_cursor(bool show);
+	void capture_mouse(bool capture);
+	void set_mouse_pos(int x, int y);
 	void show(bool visible);
 	void switch_to_fullscreen(video_mode const& mode);
 	void set_focus();
@@ -70,6 +72,7 @@ private:
 	HCURSOR cursor_;
 	bool fullscreen_;
 	WINDOWPLACEMENT prev_placement_;
+	boost::atomic<int> capture_count_;
 
 	bool message_handling_enabled_;
 	bool drag_accept_files_enabled_;

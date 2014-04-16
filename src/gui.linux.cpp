@@ -436,6 +436,7 @@ void window::create(creation_args const& args)
 	// In fullscreen mode, we must grab keyboard and mouse inputs
 	if (fullscreen)
 	{
+		capture_count_ = 1;
 		XGrabPointer(g_display, window_, true, 0, GrabModeAsync, GrabModeAsync, window_, None, CurrentTime);
 		XGrabKeyboard(g_display, window_, true, GrabModeAsync, GrabModeAsync, CurrentTime);
 	}
@@ -445,6 +446,7 @@ void window::_init()
 {
 	// Make sure the "last key release" is initialized with invalid values
 //	myLastKeyReleaseEvent.type = -1;
+	capture_count_ = 0;
 
 	// Get the atom defining the close event
 	atom_close_ = XInternAtom(g_display, "WM_DELETE_WINDOW", false);
@@ -615,6 +617,23 @@ void window::show_mouse_cursor(bool show)
 {
 	XDefineCursor(g_display, window_, show? None : hidden_cursor_);
 	XFlush(g_display);
+}
+
+void window::capture_mouse(bool capture)
+{
+	if (capture)
+	{
+		if (++capture_count_ == 1) XGrabPointer(g_display, window_, true, 0, GrabModeAsync, GrabModeAsync, window_, None, CurrentTime);
+	}
+	else
+	{
+		if (--capture_count_ == 0) XUngrabPointer(g_display, CurrentTime);
+	}
+}
+
+void window::set_mouse_pos(int x, int y)
+{
+	XWarpPointer(g_display, None, window_, 0, 0, 0, 0, x, y);
 }
 
 void window::show(bool visible)

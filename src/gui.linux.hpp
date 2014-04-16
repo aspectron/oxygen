@@ -45,6 +45,8 @@ public:
 	}
 
 	void show_mouse_cursor(bool show);
+	void capture_mouse(bool capture);
+	void set_mouse_pos(int x, int y);
 	void show(bool visible);
 	void set_focus();
 	void toggle_fullscreen() {}
@@ -78,7 +80,8 @@ private:
 
 	uint32_t pressed_key_code_;
 	uint32_t pressed_char_code_;
-	
+	boost::atomic<int> capture_count_;
+
 	friend class input_event; // to access input_context_
 };
 
