@@ -525,6 +525,14 @@ void window::toggle_fullscreen()
 		mi.cbSize = sizeof(mi);
 		GetMonitorInfo(MonitorFromWindow(hwnd_, MONITOR_DEFAULTTOPRIMARY), &mi);
 
+		// If we would call SetWindowPos() with mi.rcMonitor, the window becomes
+		// topmost in a kind of exclusive mode on my system with Intel HD Graphics 4600 -
+		// task switching doesn't work, other windows aren't displayed. If the window rect
+		// is a bit less than the monitor size, all works fine. Decreasing mi.rcMonitor.top
+		// for 1px in order to resolve this issue. Decreasing rcMonitor.bottom doesn't work-
+		// Windows taskbar is being still visible in this case.
+		--mi.rcMonitor.top;
+
 		SetWindowLong(hwnd_, GWL_STYLE, style & ~WS_OVERLAPPEDWINDOW);
 		SetWindowPos(hwnd_, HWND_TOP, mi.rcMonitor.left, mi.rcMonitor.top,
 			mi.rcMonitor.right - mi.rcMonitor.left, mi.rcMonitor.bottom - mi.rcMonitor.top,
@@ -533,8 +541,8 @@ void window::toggle_fullscreen()
 	else
 	{
 		SetWindowLong(hwnd_, GWL_STYLE, style | WS_OVERLAPPEDWINDOW);
-		SetWindowPos(hwnd_, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE /*| SWP_NOZORDER |
-                 SWP_NOOWNERZORDER*/ | SWP_FRAMECHANGED);
+		SetWindowPos(hwnd_, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+			SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
 		SetWindowPlacement(hwnd_, &prev_placement_);
 	}
 //	update_window_size();
