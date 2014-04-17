@@ -2,6 +2,7 @@
 #include "gui.linux.hpp"
 
 #include <X11/Xlib.h>
+#include <X11/cursorfont.h>
 #include <X11/keysym.h>
 #include <X11/XKBlib.h>
 
@@ -284,6 +285,8 @@ window::window(creation_args const& args)
 	, atom_close_(0)
 	, previous_video_mode_(-1)
 	, hidden_cursor_(0)
+	, current_cursor(0)
+	, capture_count_(0)
 	, input_context_(nullptr)
 {
 	create(args);
@@ -294,6 +297,8 @@ window::window(v8::Arguments const& v8_args)
 	, atom_close_(0)
 	, previous_video_mode_(-1)
 	, hidden_cursor_(0)
+	, current_cursor(0)
+	, capture_count_(0)
 	, input_context_(nullptr)
 {
 	creation_args const args(v8_args);
@@ -446,7 +451,6 @@ void window::_init()
 {
 	// Make sure the "last key release" is initialized with invalid values
 //	myLastKeyReleaseEvent.type = -1;
-	capture_count_ = 0;
 
 	// Get the atom defining the close event
 	atom_close_ = XInternAtom(g_display, "WM_DELETE_WINDOW", false);
@@ -616,6 +620,42 @@ void window::_cleanup()
 void window::show_mouse_cursor(bool show)
 {
 	XDefineCursor(g_display, window_, show? None : hidden_cursor_);
+	XFlush(g_display);
+}
+
+void window::set_stock_cursor(cursor_id id)
+{
+	unsigned shape = 0;
+	switch (id)
+	{
+	case ARROW:
+		shape = XC_arrow;
+		break;
+	case INPUT:
+		name = XC_xterm;
+		break;
+	case HAND:
+		name = XC_hand2;
+		break;
+	case CROSS:
+		name = XC_crosshair;
+		break;
+	case MOVE:
+		name = XC_fleur;
+		break;
+	case WAIT:
+		name = XC_watch;
+		break;
+	default:
+		return;
+	}
+
+	if (current_cursor_)
+	{
+		XFreeCursor(g_display, current_cursor_);
+	}
+	current_cursor_ = XCreateFontCursor(g_display, shape);
+	XDefineCursor(g_display, window_, current_cursor_);
 	XFlush(g_display);
 }
 

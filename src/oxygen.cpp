@@ -160,6 +160,13 @@ Handle<Value> oxygen_install()
 		**/
 		.set("setIcon", &window::load_icon_from_file)
 
+		/**
+		@function setCursor(cursor)
+		@param cursor - see #cursors
+		Set window cursor
+		**/
+		.set("setCursor", &window::set_stock_cursor)
+
 		.set("show_frame", &window::show_frame)
 		.set("set_topmost", &window::set_topmost)
 
@@ -263,6 +270,27 @@ Handle<Value> oxygen_install()
 	KEY(SCROLL_LOCK);
 #undef KEY
 	oxygen_module.set("keys", keys);
+
+	/**
+	@module oxygen
+	@property cursors Window cursors. Contains following constants:
+	  * `ARROW`       Default cursor pointer
+	  * `INPUT`       Cursor in input field
+	  * `HAND`        Hand
+	  * `CROSS`       Crosshair
+	  * `MOVE`        Arrows to 4  directions
+	  * `WAIT`        Hourglass
+	**/
+	v8pp::module cursors;
+#define CURSOR(name) cursors.set_const(#name, window::name)
+	CURSOR(ARROW);
+	CURSOR(INPUT);
+	CURSOR(HAND);
+	CURSOR(CROSS);
+	CURSOR(MOVE);
+	CURSOR(WAIT);
+#undef CURSOR
+	oxygen_module.set("cursors", cursors);
 
 	return oxygen_module.new_instance();
 }

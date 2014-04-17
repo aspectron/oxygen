@@ -234,6 +234,10 @@ public:
 	int width() const { return size_.width; }
 	int height() const { return size_.height; }
 
+	enum cursor_id
+	{
+		ARROW, INPUT, HAND, CROSS, MOVE, WAIT,
+	};
 protected:
 	bool preprocess_by_sink(event& e);
 	bool postprocess_by_sink(event& e);

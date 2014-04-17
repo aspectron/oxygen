@@ -45,6 +45,7 @@ public:
 	}
 
 	void show_mouse_cursor(bool show);
+	void set_stock_cursor(cursor_id id);
 	void capture_mouse(bool capture);
 	void set_mouse_pos(int x, int y);
 	void show(bool visible);
@@ -74,7 +75,7 @@ private:
 	Window window_;
 	Atom atom_close_;
 	int previous_video_mode_;
-	Cursor hidden_cursor_;
+	Cursor hidden_cursor_, current_cursor_;
 	XIC input_context_;
 	XVisualInfo current_visual_;
 

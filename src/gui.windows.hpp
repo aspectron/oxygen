@@ -38,6 +38,7 @@ public:
 	void load_icon_from_file(std::wstring const& filename);
 
 	void set_cursor(HCURSOR cursor);
+	void set_stock_cursor(cursor_id id);
 	void show_mouse_cursor(bool show);
 	void capture_mouse(bool capture);
 	void set_mouse_pos(int x, int y);
@@ -70,6 +71,7 @@ private:
 	HWND hwnd_;
 
 	HCURSOR cursor_;
+	bool forced_cursor_, is_cursor_visible_;
 	bool fullscreen_;
 	WINDOWPLACEMENT prev_placement_;
 	boost::atomic<int> capture_count_;

@@ -123,6 +123,8 @@ void window::init(creation_args const& args)
 	hwnd_ = nullptr;
 	size_.width = size_.height = 0;
 	cursor_ = LoadCursor(NULL, IDC_ARROW);
+	forced_cursor_ = false;
+	is_cursor_visible_ = true;
 	fullscreen_ = false;
 	message_handling_enabled_ = false;
 	drag_accept_files_enabled_ = false;
@@ -238,12 +240,50 @@ void window::update_window_size()
 
 void window::set_cursor(HCURSOR cursor)
 {
-	cursor_= cursor;
+	if (!forced_cursor_)
+	{
+		cursor_= cursor;
+	}
+}
+
+void window::set_stock_cursor(cursor_id id)
+{
+	LPCTSTR name = NULL;
+	switch (id)
+	{
+	case ARROW:
+		name = IDC_ARROW;
+		break;
+	case INPUT:
+		name = IDC_IBEAM;
+		break;
+	case HAND:
+		name = IDC_HAND;
+		break;
+	case CROSS:
+		name = IDC_CROSS;
+		break;
+	case MOVE:
+		name = IDC_SIZEALL;
+		break;
+	case WAIT:
+		name = IDC_WAIT;
+		break;
+	default:
+		return;
+	}
+	if (name)
+	{
+		forced_cursor_ = (id != ARROW);
+		cursor_ = LoadCursor(NULL, name);
+		::SendMessage(hwnd_, WM_SETCURSOR, 0, HTCLIENT);
+	}
 }
 
 void window::show_mouse_cursor(bool show)
 {
-	cursor_= (show? LoadCursor(NULL, IDC_ARROW) : NULL);
+	is_cursor_visible_ = show;
+	::SendMessage(hwnd_, WM_SETCURSOR, 0, HTCLIENT);
 }
 
 void window::capture_mouse(bool capture)
@@ -354,7 +394,7 @@ bool window::process(event& e)
 		if (LOWORD(e.lparam) == HTCLIENT)
 		{
 			// set custom cursor for client area only
-			::SetCursor(cursor_);
+			::SetCursor(is_cursor_visible_? cursor_ : NULL);
 			e.result = TRUE;
 			return true;
 		}
