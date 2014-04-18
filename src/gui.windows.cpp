@@ -283,7 +283,7 @@ void window::set_stock_cursor(cursor_id id)
 void window::show_mouse_cursor(bool show)
 {
 	is_cursor_visible_ = show;
-	::SendMessage(hwnd_, WM_SETCURSOR, 0, HTCLIENT);
+	::PostMessage(hwnd_, WM_SETCURSOR, 0, HTCLIENT);
 }
 
 void window::capture_mouse(bool capture)
