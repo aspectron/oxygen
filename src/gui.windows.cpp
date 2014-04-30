@@ -276,7 +276,7 @@ void window::set_stock_cursor(cursor_id id)
 	{
 		forced_cursor_ = (id != ARROW);
 		cursor_ = LoadCursor(NULL, name);
-		::SendMessage(hwnd_, WM_SETCURSOR, 0, HTCLIENT);
+		::PostMessage(hwnd_, WM_SETCURSOR, 0, HTCLIENT);
 	}
 }
 
