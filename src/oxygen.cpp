@@ -63,17 +63,22 @@ Handle<Value> oxygen_install()
 	  * `dx`, `dy`   Scroll delta for mouse wheel events
 
 	@event close()
+
 	@event resize(new_size)
 	@param new_size {Object} An object with `width` and `height` attributes
+
 	@event message(msg, wparam, lparam) - Windows only
 	@param msg {Number} Windows message code
 	@param wparam {Number} Windows message WPARAM
 	@param lparam {Number} Windows message LPARAM
+
 	@event drag_accept_files(files) - Windows only
 	@param files {Array} file names dragged are being to the window
+
 	@event keydown(key_event)
 	@event keyup(key_event)
 	@event char(key_event)
+
 	@event mousemove(mouse_event)
 	@event mousewheel(mouse_event)
 	@event mousedown(mouse_event)
