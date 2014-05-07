@@ -7,6 +7,8 @@
 #include <windowsx.h>
 #include <shellapi.h>
 
+#include "gui.windows.hpp"
+
 using namespace v8;
 
 namespace aspect { namespace gui {
