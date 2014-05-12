@@ -285,7 +285,7 @@ window::window(creation_args const& args)
 	, atom_close_(0)
 	, previous_video_mode_(-1)
 	, hidden_cursor_(0)
-	, current_cursor(0)
+	, current_cursor_(0)
 	, capture_count_(0)
 	, input_context_(nullptr)
 {
@@ -297,7 +297,7 @@ window::window(v8::Arguments const& v8_args)
 	, atom_close_(0)
 	, previous_video_mode_(-1)
 	, hidden_cursor_(0)
-	, current_cursor(0)
+	, current_cursor_(0)
 	, capture_count_(0)
 	, input_context_(nullptr)
 {
@@ -632,19 +632,19 @@ void window::set_stock_cursor(cursor_id id)
 		shape = XC_arrow;
 		break;
 	case INPUT:
-		name = XC_xterm;
+		shape = XC_xterm;
 		break;
 	case HAND:
-		name = XC_hand2;
+		shape = XC_hand2;
 		break;
 	case CROSS:
-		name = XC_crosshair;
+		shape = XC_crosshair;
 		break;
 	case MOVE:
-		name = XC_fleur;
+		shape = XC_fleur;
 		break;
 	case WAIT:
-		name = XC_watch;
+		shape = XC_watch;
 		break;
 	default:
 		return;
