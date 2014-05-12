@@ -30,6 +30,7 @@
                         'src/gui.linux.cpp',
                         'src/gui.linux.hpp',
                     ],
+                    'libraries': ['-lX11', '-lXrandr', '-lGL'],
                 }],
             ],
         },
