@@ -4,7 +4,10 @@
             'target_name': 'oxygen',
             'type': 'shared_library',
             'msvs_guid': '0C15F765-B4EA-4A86-B369-701BEE5828E0',
-            'dependencies': ['<(jsx)/sdk/core/core.gyp:core'],
+            'dependencies': [
+                '<(jsx)/sdk/core/core.gyp:core',
+                '<(jsx)/extern/extern.gyp:*',
+            ],
             'direct_dependent_settings': {
                 'include_dirs': ['src'],
             },
