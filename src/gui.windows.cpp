@@ -1,13 +1,10 @@
 #include "oxygen.hpp"
-
-#if OS(WINDOWS)
+#include "gui.windows.hpp"
 
 #include <boost/iostreams/device/mapped_file.hpp>
 
 #include <windowsx.h>
 #include <shellapi.h>
-
-#include "gui.windows.hpp"
 
 using namespace v8;
 
@@ -783,5 +780,3 @@ uint32_t input_event::key_type_and_state(UINT message)
 }
 
 }} // namespace aspect::gui
-
-#endif // OS(WINDOWS)

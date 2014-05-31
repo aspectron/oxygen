@@ -7,7 +7,7 @@
 
 namespace aspect { namespace gui {
 
-/// View mode information
+/// Video mode information
 struct OXYGEN_API video_mode : boost::totally_ordered<video_mode>
 {
 public:
@@ -15,7 +15,7 @@ public:
 	unsigned width;      ///< display width in pixels
 	unsigned height;     ///< display height in pixels
 	unsigned bpp;        ///< display color depth, bits per pixel
-	unsigned frequency;  ///< displya refresh rate, Hz
+	unsigned frequency;  ///< display refresh rate, Hz
 
 	video_mode()
 		: width(0)

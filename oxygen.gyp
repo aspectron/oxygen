@@ -28,10 +28,20 @@
                         'src/gui.windows.hpp',
                     ],
                 }],
-                ['OS=="linux"', {
+                ['OS=="mac"', {
                     'sources': [
-                        'src/gui.linux.cpp',
-                        'src/gui.linux.hpp',
+                        'src/gui.mac.mm',
+                        'src/gui.mac.hpp',
+                    ],
+                    'libraries': [
+                        'AppKit.framework',
+                        'CoreGraphics.framework',
+                    ],
+                }],
+                ['OS not in ["win", "mac"]', {
+                    'sources': [
+                        'src/gui.x11.cpp',
+                        'src/gui.x11.hpp',
                     ],
                     'libraries': ['-lX11', '-lXrandr', '-lGL'],
                 }],

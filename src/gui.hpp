@@ -1,7 +1,16 @@
-#ifndef __GUI_HPP__
-#define __GUI_HPP__
+#ifndef OXYGEN_GUI_HPP_INCLUDED
+#define OXYGEN_GUI_HPP_INCLUDED
 
-#if !OS(WINDOWS)
+#if OS(WINDOWS)
+#include <windows.h>
+#elif OS(DARWIN)
+	#ifdef __OBJC__
+	#import <Cocoa/Cocoa.h>
+	#else
+	struct NSEvent;
+	typedef void* id;
+	#endif
+#else
 #include <X11/Xlib.h>
 #endif
 
@@ -68,6 +77,8 @@ struct OXYGEN_API event
 	{
 	} 
 };
+#elif OS(DARWIN)
+typedef NSEvent* event;
 #else
 typedef XEvent event;
 #endif
@@ -179,6 +190,8 @@ private:
 #if OS(WINDOWS)
 	static uint32_t mouse_type_and_state(UINT message, WPARAM wparam);
 	static uint32_t key_type_and_state(UINT message);
+#elif OS(DARWIN)
+	static uint32_t type_and_state(int type, unsigned int modifiers);
 #else
 	static uint32_t type_and_state(int type, unsigned int state);
 #endif
@@ -238,7 +251,7 @@ public:
 	{
 		ARROW, INPUT, HAND, CROSS, MOVE, WAIT,
 	};
-protected:
+//protected:
 	bool preprocess_by_sink(event& e);
 	bool postprocess_by_sink(event& e);
 
@@ -311,4 +324,4 @@ struct convert<aspect::gui::input_event>
 
 } //v8pp
 
-#endif // __GUI_HPP__
+#endif // OXYGEN_GUI_HPP_INCLUDED

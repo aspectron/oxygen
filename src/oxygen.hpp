@@ -5,9 +5,6 @@
 #include "runtime.hpp"
 #include "v8_main_loop.hpp"
 
-#include <iostream>
-#include <vector>
-
 #if OS(WINDOWS)
 //	#pragma warning ( disable : 4251 )
 #if defined(OXYGEN_EXPORTS)
@@ -26,6 +23,8 @@
 #include "gui.hpp"
 #if OS(WINDOWS)
 #include "gui.windows.hpp"
-#elif OS(LINUX)
-#include "gui.linux.hpp"
+#elif OS(DARWIN)
+#include "gui.mac.hpp"
+#else
+#include "gui.x11.hpp"
 #endif

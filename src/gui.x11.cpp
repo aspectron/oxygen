@@ -1,5 +1,5 @@
 #include "oxygen.hpp"
-#include "gui.linux.hpp"
+#include "gui.x11.hpp"
 
 #include <X11/Xlib.h>
 #include <X11/cursorfont.h>
@@ -323,7 +323,7 @@ void window::create(creation_args const& args)
 	// Switch to fullscreen if necessary
 	if (fullscreen)
 	{
-		switch_to_fullscreen(video_mode(args.width, args.height, args.bpp));
+		switch_to_fullscreen(video_mode(args.width, args.height, args.bpp, 0));
 	}
 
 	// Create the rendering context

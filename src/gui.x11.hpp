@@ -1,7 +1,5 @@
-#pragma once
-
-#ifndef __GUI_XF86_HPP__
-#define __GUI_XF86_HPP__
+#ifndef OXYGEN_GUI_X11_HPP_INCLUDED
+#define OXYGEN_GUI_X11_HPP_INCLUDED
 
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrandr.h>
@@ -88,4 +86,4 @@ private:
 
 }} // aspect::gui
 
-#endif // __GUI_XF86_HPP__
+#endif // OXYGEN_GUI_X11_HPP_INCLUDED

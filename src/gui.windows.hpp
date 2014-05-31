@@ -1,7 +1,5 @@
-#ifndef __GUI_WINXX_HPP__
-#define __GUI_WINXX_HPP__
-
-#if OS(WINDOWS)
+#ifndef OXYGEN_GUI_WINDOWS_HPP_INCLUDED
+#define OXYGEN_GUI_WINDOWS_HPP_INCLUDED
 
 #include <boost/atomic.hpp>
 #include <boost/scoped_array.hpp>
@@ -84,6 +82,4 @@ private:
 
 }} // aspect::gui
 
-#endif // OS(WINDOWS)
-
-#endif // __WINDOW_WINXX_HPP__
+#endif // OXYGEN_GUI_WINDOWS_HPP_INCLUDED

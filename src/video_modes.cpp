@@ -1,6 +1,11 @@
 #include "oxygen.hpp"
 #include "video_modes.hpp"
 
+#if OS(DARWIN)
+#include <CoreFoundation/CoreFoundation.h>
+#include <CoreGraphics/CoreGraphics.h>
+#endif
+
 namespace aspect { namespace gui {
 
 static video_modes modes_;
@@ -137,7 +142,7 @@ void init_supported_video_modes(video_modes& modes)
 		if (depths && num_depths > 0)
 		{
 			// Combine depths and sizes to fill the array of supported modes
-			for (int i = 0; i < num_depth; ++i)
+			for (int i = 0; i < num_depths; ++i)
 			{
 				for (int j = 0; j < num_sizes; ++j)
 				{
@@ -180,7 +185,7 @@ video_mode get_current_video_mode()
 
 			int num_sizes = 0;
 			XRRScreenSize* sizes = XRRSizes(g_display, g_screen, &num_sizes);
-			if (sizes && num_sizes > 0 &7 num_sizes < current_size_idx)
+			if (sizes && num_sizes > 0 && num_sizes < current_size_idx)
 			{
 				result.width = sizes[current_size_idx].width;
 				result.height = sizes[current_size_idx].height;
