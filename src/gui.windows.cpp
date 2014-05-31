@@ -196,7 +196,7 @@ void window::create(creation_args args)
 	// Switch to fullscreen if requested
 	if ((style_ & GWS_FULLSCREEN))
 	{
-		video_mode const mode(args.width, args.height, args.bpp);
+		video_mode const mode(args.width, args.height, args.bpp, 0);
 		switch_to_fullscreen(mode);
 	}
 
