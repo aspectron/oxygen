@@ -214,7 +214,7 @@ Handle<Value> oxygen_install()
 	  * `HOME`, `END`
 	  * `PAGE_UP`, `PAGE_DOWN`
 	  * `LEFT`, `RIGHT`, `UP` `DOWN`
-	  * `PLUS`, `MINUS`
+	  * `EQUAL`, `PLUS`, `MINUS`
 	  * `LEFT_BRACKET`, `RIGHT_BRACKET`
 	  * `COMMA`, `PERIOD`, `SLASH`, `BACKSLASH`
 	  * `SEMICOLON`, `APOSTROPHE`, `TILDE`
@@ -227,7 +227,7 @@ Handle<Value> oxygen_install()
 	  * `LEFT_CONTROL`, `RIGHT_CONTROL`
 	**/
 	v8pp::module keys;
-#define KEY(name) keys.set_const(#name, KEY_##name)
+#define KEY(name) if (KEY_##name >= 0) keys.set_const(#name, KEY_##name)
 	KEY(BACKSPACE); KEY(TAB); KEY(RETURN);
 	KEY(LEFT_SHIFT); KEY(RIGHT_SHIFT);
 	KEY(LEFT_CONTROL); KEY(RIGHT_CONTROL);
@@ -246,7 +246,7 @@ Handle<Value> oxygen_install()
 	KEY(O); KEY(P); KEY(Q); KEY(R); KEY(S); KEY(T);	KEY(U);
 	KEY(V); KEY(W); KEY(X); KEY(Y); KEY(Z);
 
-	KEY(PLUS); KEY(MINUS);
+	KEY(EQUAL); KEY(PLUS); KEY(MINUS);
 	KEY(LEFT_BRACKET); KEY(RIGHT_BRACKET);
 
 	KEY(COMMA); KEY(PERIOD);
