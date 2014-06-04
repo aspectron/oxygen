@@ -33,3 +33,20 @@ dpc(25000, function(){
 	window.destroy();
 })
 */
+
+console.log(window.runFileDialog({
+	type: 'save',
+	title: 'My title',
+	multiselect: true,
+	defaultDir: 'D:\\',
+	defaultName: 'filename',
+	defaultExt: '.xml',
+	filter: {
+		'*.pdf': 'PDF documents',
+		'*.html': 'HTML documents',
+		'*.rtf': 'RTF documents',
+		'*.doc;*.docx': 'Microsoft Word documents',
+		'*.pdf;*.html;*.rtf;*doc;*.docx': 'All supported documents',
+		'*.*': 'All files',
+	},
+}));

@@ -172,6 +172,50 @@ Handle<Value> oxygen_install()
 		**/
 		.set("setCursor", &window::set_stock_cursor)
 
+		/**
+		@function runFileDialog(options)
+		@return {Undefined|String|Array}
+		Run modal dialog for file name selection.
+
+		If the dialog has been canceled, `runFileDialog()` function returns `undefined` value.
+		When `multiselect = true` the function returns an array of file names, otherwise it returns a selected file name string.
+
+		Allowed options are:
+		  * `type` Dialog type string, open or save, default is open.
+		  * `multiselect` Enable multiple file names selection, valid only for type = 'open' dialogs, default is false.
+		  * `title` Custom dialog title string
+		  * `filter` Key-value mapping with filter to display file names. Each key is a file name filter, value is the filter description.
+		  * `defaultDir` Initial directory name where to display files in the dialog
+		  * `defaultName` Default file name, used in the dialog
+		  * `defaultExt` Default file extension, used in the dialog
+
+		Examples:
+		```
+		// Dialog to open multiple files
+		var filenames_to_open = window.runFileDialog({
+			title: 'My title',
+			multiselect: true,
+			filter: {
+				'*.pdf': 'PDF documents',
+				'*.html': 'HTML documents',
+				'*.rtf': 'RTF documents',
+				'*.doc;*.docx': 'Microsoft Word documents',
+				'*.pdf;*.html;*.rtf;*doc;*.docx': 'All supported documents',
+				'*.*': 'All files',
+			},
+		});
+
+		// Dialog to save a file, default name is `filename.ext`
+		var filename_to_save = window.runFileDialog({
+			type: 'save',
+			defaultName: 'filename',
+			defaultExt: 'ext',
+		});
+		```
+		**/
+#if OS(WINDOWS)
+		.set("runFileDialog", &window::run_file_dialog)
+#endif
 		.set("show_frame", &window::show_frame)
 		.set("set_topmost", &window::set_topmost)
 

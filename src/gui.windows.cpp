@@ -5,6 +5,7 @@
 
 #include <windowsx.h>
 #include <shellapi.h>
+#include <commdlg.h>
 
 using namespace v8;
 
@@ -777,6 +778,138 @@ uint32_t input_event::key_type_and_state(UINT message)
 	result |= (HIWORD(GetAsyncKeyState(VK_XBUTTON2))? XBUTTON2_DOWN : 0);
 
 	return result;
+}
+
+Handle<Value> window::run_file_dialog(Arguments const& args)
+{
+	HandleScope scope;
+
+	std::string type = "open";
+	bool multiselect = false;
+	std::wstring filter;
+	std::wstring title;
+	std::wstring default_dir;
+	std::wstring default_ext;
+
+	std::vector<wchar_t> filename_buf;
+
+	if (args[0]->IsObject())
+	{
+		Handle<Object> options = args[0]->ToObject();
+
+		get_option(options, "type", type);
+		if (type == "open")
+		{
+			get_option(options, "multiselect", multiselect);
+		}
+		get_option(options, "title", title);
+
+		Handle<Object> filter_obj;
+		if (get_option(options, "filter", filter_obj))
+		{
+			Handle<Array> filter_keys = filter_obj->GetPropertyNames();
+			for (uint32_t i = 0, count = filter_keys->Length(); i < count; ++i)
+			{
+				Handle<Value> key = filter_keys->Get(i);
+				Handle<Value> val = filter_obj->Get(key);
+
+				// description
+				filter += v8pp::from_v8<std::wstring>(val);
+				filter += L'\0';
+				// mask
+				filter += v8pp::from_v8<std::wstring>(key);
+				filter += L'\0';
+			}
+		}
+
+		get_option(options, "defaultDir", default_dir);
+
+		get_option(options, "defaultExt", default_ext);
+		if (!default_ext.empty() && default_ext[0] == L'.')
+		{
+			default_ext.erase(0, 1);
+		}
+
+		std::wstring default_name;
+		if (get_option(options, "defaultName", default_name))
+		{
+			std::copy(default_name.begin(), default_name.end(), std::back_inserter(filename_buf));
+		}
+	}
+	filename_buf.resize(8192);
+
+	OPENFILENAMEW ofn = {};
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = hwnd_;
+	ofn.lpstrFile = filename_buf.data();
+	ofn.nMaxFile = static_cast<DWORD>(filename_buf.size());
+	ofn.Flags = (multiselect? OFN_ALLOWMULTISELECT : 0) | OFN_ENABLESIZING | OFN_EXPLORER
+		| OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST
+		| OFN_HIDEREADONLY | OFN_LONGNAMES | OFN_OVERWRITEPROMPT;
+
+	if (!filter.empty())
+	{
+		ofn.lpstrFilter = filter.c_str();
+	}
+	if (!title.empty())
+	{
+		ofn.lpstrTitle = title.c_str();
+	}
+	if (!default_dir.empty())
+	{
+		ofn.lpstrInitialDir = default_dir.c_str();
+	}
+	if (!default_ext.empty())
+	{
+		ofn.lpstrDefExt = default_ext.c_str();
+	}
+
+	BOOL ok;
+	if (type == "open")
+	{
+		ok = GetOpenFileNameW(&ofn);
+	}
+	else if (type == "save")
+	{
+		ok = GetSaveFileNameW(&ofn);
+	}
+	else
+	{
+		throw std::invalid_argument("unknown dialog type " + type);
+	}
+
+	if (ok)
+	{
+		if (multiselect)
+		{
+			Handle<Array> filenames = Array::New();
+
+			std::wstring const dirname = ofn.lpstrFile;
+			ofn.lpstrFile += dirname.size() + 1;
+
+			uint32_t filecount = 0;
+			for (filecount = 0; *ofn.lpstrFile; ++filecount)
+			{
+				std::wstring const filename = ofn.lpstrFile;
+				ofn.lpstrFile += filename.size() + 1;
+				filenames->Set(filecount, v8pp::to_v8(dirname + L'\\' + filename));
+			}
+
+			if (filecount == 0)
+			{
+				// single selection
+				filenames->Set(0, v8pp::to_v8(dirname));
+			}
+
+			return scope.Close(filenames);
+		}
+		else
+		{
+			return scope.Close(v8pp::to_v8<wchar_t const*>(ofn.lpstrFile));
+		}
+	}
+
+	return Undefined();
 }
 
 }} // namespace aspect::gui

@@ -44,6 +44,8 @@ public:
 	void switch_to_fullscreen(video_mode const& mode);
 	void set_focus();
 	void toggle_fullscreen();
+
+	v8::Handle<v8::Value> run_file_dialog(v8::Arguments const& args);
 private:
 	void init(creation_args const& args);
 
