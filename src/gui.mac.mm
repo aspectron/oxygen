@@ -383,8 +383,6 @@ void window::create(creation_args args)
 
 void window::destroy()
 {
-	[object orderOut:nil];
-	[object setDelegate:nil];
 	[delegate release];
 	delegate = nil;
 
