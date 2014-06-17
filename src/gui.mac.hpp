@@ -59,7 +59,7 @@ public:
 	id delegate;
 	id view;
 
-	void handle_input(event const& e);
+	void handle_input(event& e);
 	void handle_resize();
 	void handle_close();
 };

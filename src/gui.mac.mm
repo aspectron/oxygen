@@ -469,10 +469,20 @@ void window::use_as_splash_screen(std::string const& filename)
 	[image_filename release];
 }
 
-void window::handle_input(event const& e)
+void window::handle_input(event& e)
 {
+	if (preprocess_by_sink(e))
+	{
+		return;
+	}
+
 	input_event const inp_e(e);
 	on_input(inp_e);
+
+	if (postprocess_by_sink(e))
+	{
+		return;
+	}
 }
 
 void window::handle_resize()
@@ -512,9 +522,15 @@ input_event::input_event(event const& e)
 	case NSOtherMouseUp:
 	case NSScrollWheel:
 	case NSMouseMoved:
-		type_and_state_ |= ([e buttonNumber] << BUTTON_SHIFT) & BUTTON_MASK;
-		data_.mouse.x = [e locationInWindow].x;
-		data_.mouse.y = [e locationInWindow].y;
+		type_and_state_ |= (([e buttonNumber] + 1) << BUTTON_SHIFT) & BUTTON_MASK;
+		{
+			NSPoint const pt = [e locationInWindow];
+			id window = [e window];
+			id view = [window contentView];
+			NSRect const rc = [view frame];
+			data_.mouse.x = pt.x;
+			data_.mouse.y = rc.size.height - pt.y;
+		}
 		if (type == NSScrollWheel)
 		{
 		    double dx, dy;
