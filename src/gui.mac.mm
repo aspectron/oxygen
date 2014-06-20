@@ -335,6 +335,7 @@ void window::create(creation_args args)
 {
 	style_ = args.style;
 	style_mask_ = 0;
+	fullscreen_ = false;
 
 	if (style_ & GWS_APPWINDOW)
 	{
@@ -360,8 +361,10 @@ void window::create(creation_args args)
 	[object setContentView: view];
 
 	delegate = [[window_delegate alloc] initWithWindow:this];
-	[object setDelegate: delegate];
+	[object setDelegate:delegate];
 	[object setAcceptsMouseMovedEvents:YES];
+	[object setOpaque:YES];
+	[object setHidesOnDeactivate:YES];
 
 	if (!args.icon.empty())
 	{
@@ -389,22 +392,22 @@ void window::destroy()
 	[view release];
 	view = nil;
 
-	[object close];
+	[object release];
 	object = nil;
 }
 
-rectangle<int> window::rect() const
+rectangle<float> window::rect() const
 {
 	NSRect const rect = [object frame];
 
-	return rectangle<int>(rect.origin.x, rect.origin.y,
+	return rectangle<float>(rect.origin.x, rect.origin.y,
 		rect.size.width, rect.size.height);
 }
 
-void window::set_rect(rectangle<int> const& rect)
+void window::set_rect(rectangle<float> const& rect)
 {
 	NSRect const frame_rect = NSMakeRect(rect.left, rect.top, rect.width, rect.height);
-	[object setFrame:frame_rect];
+	[object setFrame:frame_rect display:YES];
 }
 
 void window::show(bool visible)
@@ -422,12 +425,44 @@ void window::show(bool visible)
 
 void window::toggle_fullscreen()
 {
-//	[object toggleFullScreen:nil];
+	dispatch_sync(dispatch_get_main_queue(), ^{
+		fullscreen_ = !fullscreen_;
+		if (fullscreen_)
+		{
+			// set no border
+			style_mask_ = [object styleMask];
+			[object setStyleMask:NSBorderlessWindowMask];
+
+			// set level above the menu bar
+			level_ = [object level];
+			[object setLevel:NSMainMenuWindowLevel + 1];
+
+			// set window rect as the window screen rect
+			NSRect screen_rect = [[object screen] frame];
+			rect_ = rect();
+			set_rect(rectangle<float>(screen_rect.origin.x, screen_rect.origin.y,
+				screen_rect.size.width, screen_rect.size.height));
+		}
+		else
+		{
+			[object setStyleMask:style_mask_];
+			[object setLevel:level_];
+			set_rect(rect_);
+		}
+		// restore key focus after changing the window level
+		[object orderOut:nil];
+		[object makeKeyAndOrderFront:nil];
+	});
 }
 
 void window::set_focus()
 {
 	[object makeKeyAndOrderFront:nil];
+}
+
+void window::set_cursor(NSCursor* cursor)
+{
+	[cursor set];
 }
 
 void window::show_frame(bool show)
@@ -460,10 +495,12 @@ void window::use_as_splash_screen(std::string const& filename)
 	show_frame(false);
 
 	NSRect rect = [object frame];
-	view = [[NSImageView alloc] initWithFrame:rect];
-	[view setImageScaling:NSImageScaleAxesIndependently];
-	[view setImage:image];
-	[object setContentView:view];
+	NSImageView* image_view = [[NSImageView alloc] initWithFrame:rect];
+	[image_view setImageScaling:NSImageScaleAxesIndependently];
+	[image_view setImage:image];
+
+	[view release];
+	[object setContentView:image_view];
 
 	[image autorelease];
 	[image_filename release];
@@ -487,10 +524,9 @@ void window::handle_input(event& e)
 
 void window::handle_resize()
 {
-	id view = [object contentView];
-	if (!view) view = object;
+	NSView* view = [object contentView];
+	NSRect rect = [view frame];
 
-    NSRect const rect = [view frame];
 	size_.width = rect.size.width;
 	size_.height = rect.size.height;
 
@@ -499,10 +535,6 @@ void window::handle_resize()
 
 void window::handle_close()
 {
-	if (style_ & GWS_APPWINDOW)
-	{
-		runtime::terminate();
-	}
 	on_event("close");
 }
 
@@ -524,12 +556,11 @@ input_event::input_event(event const& e)
 	case NSMouseMoved:
 		type_and_state_ |= (([e buttonNumber] + 1) << BUTTON_SHIFT) & BUTTON_MASK;
 		{
-			NSPoint const pt = [e locationInWindow];
-			id window = [e window];
-			id view = [window contentView];
-			NSRect const rc = [view frame];
+			NSWindow* window = [e window];
+			NSView* view = [window contentView];
+			NSPoint const pt = [e locationInWindow];//[view convertPoint:[e locationInWindow] fromView:nil];
 			data_.mouse.x = pt.x;
-			data_.mouse.y = rc.size.height - pt.y;
+			data_.mouse.y = [view frame].size.height - pt.y;
 		}
 		if (type == NSScrollWheel)
 		{
@@ -566,9 +597,16 @@ input_event::input_event(event const& e)
 		break;
 	case NSKeyDown:
 	case NSKeyUp:
-		data_.key.vk_code = data_.key.key_code = data_.key.scan_code = [e keyCode];
-		data_.key.char_code = [[e charactersIgnoringModifiers] characterAtIndex:0];
-		repeats_ = [e isARepeat]? 1 : 0;
+		{
+			data_.key.vk_code = data_.key.key_code = data_.key.scan_code = [e keyCode];
+
+			NSString* str = [e charactersIgnoringModifiers];
+			if ([str length] > 0)
+			{
+				data_.key.char_code = [str characterAtIndex:0];
+			}
+			repeats_ = [e isARepeat]? 1 : 0;
+		}
 		break;
 	default:
 		type_and_state_ = UNKNOWN;

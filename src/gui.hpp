@@ -242,6 +242,7 @@ public:
 	{
 	}
 
+	// Window size
 	box<int> const& size() const { return size_; }
 
 	int width() const { return size_.width; }
@@ -251,7 +252,7 @@ public:
 	{
 		ARROW, INPUT, HAND, CROSS, MOVE, WAIT,
 	};
-//protected:
+protected:
 	bool preprocess_by_sink(event& e);
 	bool postprocess_by_sink(event& e);
 

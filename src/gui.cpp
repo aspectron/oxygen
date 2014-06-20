@@ -86,16 +86,14 @@ Handle<Value> input_event::to_v8() const
 			uint32_t const ch = character();
 #if OS(WINDOWS)
 			set_option(object, "char", std::wstring(ch? 1 : 0, static_cast<wchar_t>(ch)));
-#elif OS(DARWIN)
-			std::string str;
-			if (ch) utils::to_utf8(&ch, &ch + 1, std::back_inserter(str));
-			set_option(object, "char", str);
 #else
 			std::string str;
 			if (ch) utils::to_utf8(&ch, &ch + 1, std::back_inserter(str));
 			set_option(object, "char", str);
+#if !OS(DARWIN)
 			char const* const keysym = XKeysymToString(vk_code());
 			set_option(object, "key_sym", keysym? keysym : "");
+#endif
 #endif
 		}
 		else if (is_mouse())

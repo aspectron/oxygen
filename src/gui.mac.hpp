@@ -4,6 +4,15 @@
 #include "geometry.hpp"
 #include "gui.hpp"
 
+#ifdef __OBJC__
+#import <Cocoa/Cocoa.h>
+#else
+struct NSWindow;
+struct NSView;
+struct NSObject;
+struct NSCursor;
+#endif
+
 namespace aspect { namespace gui {
 
 class OXYGEN_API window : public window_base
@@ -32,6 +41,7 @@ public:
 	}
 
 	void show_mouse_cursor(bool show) {}
+	void set_cursor(NSCursor* cursor);
 	void set_stock_cursor(cursor_id id) {}
 	void capture_mouse(bool capture) {}
 	void set_mouse_pos(int x, int y) {}
@@ -39,8 +49,8 @@ public:
 	void set_focus();
 	void toggle_fullscreen();
 
-	rectangle<int> rect() const;
-	void set_rect(rectangle<int> const& rect);
+	rectangle<float> rect() const;
+	void set_rect(rectangle<float> const& rect);
 
 	void show_frame(bool show);
 	void set_topmost(bool topmost);
@@ -52,12 +62,14 @@ private:
 	void create(creation_args args);
 
 	unsigned style_mask_;
-
+	bool fullscreen_;
+	int level_;
+	rectangle<float> rect_;
 public:
 // access from NSWindowDelegate
-	id object;
-	id delegate;
-	id view;
+	NSWindow* object;
+	NSObject* delegate;
+	NSView* view;
 
 	void handle_input(event& e);
 	void handle_resize();
