@@ -42,7 +42,7 @@ public:
 
 	void show_mouse_cursor(bool show) {}
 	void set_cursor(NSCursor* cursor);
-	void set_stock_cursor(cursor_id id) {}
+	void set_stock_cursor(cursor_id id);
 	void capture_mouse(bool capture) {}
 	void set_mouse_pos(int x, int y) {}
 	void show(bool visible);

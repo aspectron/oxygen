@@ -465,6 +465,34 @@ void window::set_cursor(NSCursor* cursor)
 	[cursor set];
 }
 
+void window::set_stock_cursor(cursor_id id)
+{
+	NSCursor* cursor = nil;
+	switch (id)
+	{
+	case ARROW:
+		cursor = [NSCursor arrowCursor];
+		break;
+	case INPUT:
+		cursor = [NSCursor IBeamCursor];
+		break;
+	case HAND:
+		cursor = [NSCursor pointingHandCursor];
+		break;
+	case CROSS:
+		cursor = [NSCursor crosshairCursor];
+		break;
+	case MOVE:
+		cursor = [NSCursor resizeUpDownCursor];
+		break;
+	case WAIT:
+	default:
+		return;
+	}
+
+	set_cursor(cursor);
+}
+
 void window::show_frame(bool show)
 {
 	[object setStyleMask:show? style_mask_ : NSBorderlessWindowMask];
