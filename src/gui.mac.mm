@@ -351,6 +351,7 @@ void window::create(creation_args args)
 
 	object = [[native_window alloc] initWithContentRect:rect styleMask:style_mask_
 		backing:NSBackingStoreBuffered defer:YES];
+	[object retain];
 
 #if TARGET(DEBUG)
 	args.caption += " (DEBUG)";
@@ -358,13 +359,15 @@ void window::create(creation_args args)
 	[object setTitle:[NSString stringWithUTF8String:args.caption.c_str()]];
 
 	view = [[content_view alloc] initWithWindow:this];
+	[view retain];
 	[object setContentView: view];
 
 	delegate = [[window_delegate alloc] initWithWindow:this];
-	[object setDelegate:delegate];
+	[delegate retain];
+	[object setDelegate:(id)delegate];
+
 	[object setAcceptsMouseMovedEvents:YES];
 	[object setOpaque:YES];
-	[object setHidesOnDeactivate:YES];
 
 	if (!args.icon.empty())
 	{
@@ -386,9 +389,11 @@ void window::create(creation_args args)
 
 void window::destroy()
 {
+	[object setDelegate:nil];
 	[delegate release];
 	delegate = nil;
 
+	[object setContentView:nil];
 	[view release];
 	view = nil;
 
@@ -452,6 +457,7 @@ void window::toggle_fullscreen()
 		// restore key focus after changing the window level
 		[object orderOut:nil];
 		[object makeKeyAndOrderFront:nil];
+		[object setHidesOnDeactivate:fullscreen_];
 	});
 }
 
@@ -620,12 +626,8 @@ input_event::input_event(event const& e)
 	case NSKeyUp:
 		{
 			data_.key.vk_code = data_.key.key_code = data_.key.scan_code = [e keyCode];
-
 			NSString* str = [e charactersIgnoringModifiers];
-			if ([str length] > 0)
-			{
-				data_.key.char_code = [str characterAtIndex:0];
-			}
+			data_.key.char_code = [str length] > 0? [str characterAtIndex:0] : 0;
 			repeats_ = [e isARepeat]? 1 : 0;
 		}
 		break;
