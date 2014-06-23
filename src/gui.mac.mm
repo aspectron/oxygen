@@ -479,12 +479,8 @@ void window::load_icon_from_file(std::string const& filename)
 {
 	NSString* image_filename = [NSString stringWithUTF8String:filename.c_str()];
 	NSImage* image = [[NSImage alloc] initWithContentsOfFile:image_filename];
-	NSButton* icon = [object standardWindowButton:NSWindowDocumentIconButton];
 
-	[icon setImage:image];
-
-	[image autorelease];
-	[image_filename release];
+	[NSApp setApplicationIconImage:image];
 }
 
 void window::use_as_splash_screen(std::string const& filename)
@@ -501,9 +497,6 @@ void window::use_as_splash_screen(std::string const& filename)
 
 	[view release];
 	[object setContentView:image_view];
-
-	[image autorelease];
-	[image_filename release];
 }
 
 void window::handle_input(event& e)
