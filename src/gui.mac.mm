@@ -533,6 +533,163 @@ void window::use_as_splash_screen(std::string const& filename)
 	[object setContentView:image_view];
 }
 
+v8::Handle<v8::Value> window::run_file_dialog(v8::Arguments const& args)
+{
+	using namespace v8;
+
+	HandleScope scope;
+
+	std::string type = "open";
+	bool multiselect = false;
+	NSString* title = nil;
+	NSString* default_name = nil;
+	NSURL* default_dir = nil;
+	NSMutableArray* file_types = nil;
+
+	if (args[0]->IsObject())
+	{
+		Handle<Object> options = args[0]->ToObject();
+
+		get_option(options, "type", type);
+		if (type == "open")
+		{
+			get_option(options, "multiselect", multiselect);
+		}
+
+		std::string str;
+		get_option(options, "title", str);
+		if (!str.empty())
+		{
+			title = [NSString stringWithUTF8String:str.c_str()];
+		}
+
+		Handle<Object> filter_obj;
+		if (get_option(options, "filter", filter_obj))
+		{
+			Handle<Array> filter_keys = filter_obj->GetPropertyNames();
+			uint32_t const count = filter_keys->Length();
+
+			if (count > 0)
+			{
+				file_types = [NSMutableArray arrayWithCapacity:count];
+			}
+
+			for (uint32_t i = 0; i < count; ++i)
+			{
+				//Handle<Value> val = filter_obj->Get(key);
+				str = v8pp::from_v8<std::string>(filter_keys->Get(i));
+
+				// using extensions without last dot
+				std::string::size_type const dot_pos = str.find_last_of('.');
+				if (dot_pos != str.npos)
+				{
+					str = str.substr(dot_pos + 1);
+				}
+				if (str == "*")
+				{
+					// allow all file types
+					file_types = nil;
+					break;
+				}
+				NSString* file_type = [NSString stringWithUTF8String:str.c_str()];
+				[file_types addObject:file_type];
+			}
+		}
+
+		//get_option(options, "defaultExt", default_ext);
+		get_option(options, "defaultDir", str);
+		if (!str.empty())
+		{
+			NSString* dir = [NSString stringWithUTF8String:str.c_str()];
+			default_dir = [NSURL fileURLWithPath:dir isDirectory:YES];
+		}
+
+		get_option(options, "defaultName", str);
+		if (!str.empty())
+		{
+			default_name = [NSString stringWithUTF8String:str.c_str()];
+		}
+	}
+
+	// create panel in the main thread
+	__block NSSavePanel* panel = nil;
+	if (type == "open")
+	{
+		dispatch_sync(dispatch_get_main_queue(), ^{
+			NSOpenPanel* open_panel = [NSOpenPanel openPanel];
+			[open_panel setAllowsMultipleSelection:multiselect];
+			[open_panel setCanChooseFiles:YES];
+			[open_panel setCanChooseDirectories:NO];
+			panel = open_panel;
+		});
+	}
+	else if (type == "save")
+	{
+		dispatch_sync(dispatch_get_main_queue(), ^{
+			panel = [NSSavePanel savePanel];
+		});
+	}
+	else
+	{
+		throw std::invalid_argument("unknown dialog type " + type);
+	}
+
+	[panel setCanCreateDirectories:YES];
+	[panel setCanSelectHiddenExtension:YES];
+	if (title)
+	{
+		[panel setTitle:title];
+	}
+	if (default_name)
+	{
+		[panel setNameFieldLabel:default_name];
+	}
+	if (default_dir)
+	{
+		[panel setDirectoryURL:default_dir];
+	}
+	if (file_types)
+	{
+		[panel setAllowedFileTypes:file_types];
+		[panel setAllowsOtherFileTypes:YES];
+	}
+
+	if ([panel runModal] == NSFileHandlingPanelOKButton)
+	{
+		if (type == "open")
+		{
+			NSArray* urls = [(NSOpenPanel*)panel URLs];
+			if (multiselect)
+			{
+				uint32_t const count = [urls count];
+				Handle<Array> filenames = Array::New(count);
+
+				for (uint32_t i = 0; i < count; ++i)
+				{
+					NSURL* url = [urls objectAtIndex:i];
+					char const* str = [url fileSystemRepresentation];
+					filenames->Set(i, v8pp::to_v8(str));
+				}
+				return scope.Close(filenames);
+			}
+			else
+			{
+				NSURL* url = [urls objectAtIndex:0];
+				char const* str = [url fileSystemRepresentation];
+				return scope.Close(v8pp::to_v8(str));
+			}
+		}
+		else if (type == "save")
+		{
+			NSURL* url = [panel URL];
+			char const* str = [url fileSystemRepresentation];
+			return scope.Close(v8pp::to_v8(str));
+		}
+	}
+
+	return Undefined();
+}
+
 void window::handle_input(event& e)
 {
 	if (preprocess_by_sink(e))

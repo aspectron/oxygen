@@ -58,6 +58,8 @@ public:
 	void load_icon_from_file(std::string const&);
 	void use_as_splash_screen(std::string const& filename);
 
+	v8::Handle<v8::Value> run_file_dialog(v8::Arguments const& args);
+
 private:
 	void create(creation_args args);
 

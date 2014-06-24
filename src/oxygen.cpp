@@ -213,7 +213,7 @@ Handle<Value> oxygen_install()
 		});
 		```
 		**/
-#if OS(WINDOWS)
+#if OS(WINDOWS) || OS(DARWIN)
 		.set("runFileDialog", &window::run_file_dialog)
 #endif
 		.set("show_frame", &window::show_frame)
