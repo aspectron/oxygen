@@ -252,11 +252,10 @@ public:
 	{
 		ARROW, INPUT, HAND, CROSS, MOVE, WAIT,
 	};
-protected:
-	bool preprocess_by_sink(event& e);
-	bool postprocess_by_sink(event& e);
 
+protected:
 	void on_resize(box<int> const& new_size);
+	void on_screen_change();
 	void on_input(input_event const& e);
 	void on_event(std::string const& type);
 
@@ -288,11 +287,14 @@ public:
 		window_.event_sinks_.remove(this);
 	}
 
-	/// Process event before window handler, return true to stop futher processing
-	virtual bool preprocess(event& e) = 0;
+	/// Process input event
+	virtual void on_input(input_event const& inp_e) = 0;
 
-	/// Process event after window handler, return true to stop futher processing
-	virtual bool postprocess(event& e) = 0;
+	/// Process resize event
+	virtual void on_resize(box<int> const& new_size) = 0;
+
+	/// Process screen change
+	virtual void on_screen_change() = 0;
 
 private:
 	window_base& window_;

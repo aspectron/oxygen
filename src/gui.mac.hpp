@@ -60,6 +60,31 @@ public:
 
 	v8::Handle<v8::Value> run_file_dialog(v8::Arguments const& args);
 
+public:
+// Retina display support
+	struct screen_info
+	{
+		explicit screen_info(NSView* view = NULL);
+
+		/// Ratio between physical and logical pixels
+		float scale;
+
+		/// Color depth in bits per pixel
+		unsigned color_depth;
+
+		/// Color depth per component, assumed the colors are balanced equally
+		unsigned color_depth_per_component;
+
+		/// Screen rectangle
+		rectangle<int> rect;
+
+		/// Available rectangle
+		rectangle<int> work_rect;
+	};
+
+	/// Backing size
+	box<int> const& backing_size() const { return backing_size_; }
+
 private:
 	void create(creation_args args);
 
@@ -67,14 +92,18 @@ private:
 	bool fullscreen_;
 	int level_;
 	rectangle<float> rect_;
+
+	box<int> backing_size_;
+
 public:
 // access from NSWindowDelegate
 	NSWindow* object;
 	NSObject* delegate;
 	NSView* view;
 
-	void handle_input(event& e);
+	void handle_input(event e);
 	void handle_resize();
+	void handle_backing_change();
 	void handle_close();
 };
 

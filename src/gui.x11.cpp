@@ -706,11 +706,6 @@ void window::set_rect(rectangle<int> const& rect)
 
 void window::process(XEvent& event)
 {
-	if (preprocess_by_sink(event))
-	{
-		return;
-	}
-
 	switch (event.type)
 	{
 	case DestroyNotify:
@@ -840,11 +835,6 @@ void window::process(XEvent& event)
 		break;
 
 */
-	}
-
-	if (postprocess_by_sink(event))
-	{
-		return;
 	}
 }
 

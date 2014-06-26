@@ -189,31 +189,34 @@ input_event input_event::from_v8(v8::Handle<v8::Value> value)
 	return result;
 }
 
-bool window_base::preprocess_by_sink(event& e)
-{
-	return boost::algorithm::any_of(event_sinks_.begin(), event_sinks_.end(),
-		[&e](event_sink* sink) { return sink->preprocess(e); });
-}
-
-bool window_base::postprocess_by_sink(event& e)
-{
-	return boost::algorithm::any_of(event_sinks_.begin(), event_sinks_.end(),
-		[&e](event_sink* sink) { return sink->postprocess(e); });
-}
-
 void window_base::on_resize(box<int> const& new_size)
 {
+	std::for_each(event_sinks_.begin(), event_sinks_.end(),
+		[&new_size](event_sink* sink) { sink->on_resize(new_size); });
+
 	if (has("resize"))
 	{
 		runtime::main_loop().schedule(boost::bind(&window_base::on_resize_v8, this, new_size));
 	}
 }
 
-void window_base::on_input(input_event const& e)
+void window_base::on_screen_change()
 {
-	if (e.type() != input_event::UNKNOWN && has(e.type_str()))
+	std::for_each(event_sinks_.begin(), event_sinks_.end(),
+		[](event_sink* sink) { sink->on_screen_change(); });
+}
+
+void window_base::on_input(input_event const& inp_e)
+{
+	if (inp_e.type() != input_event::UNKNOWN)
 	{
-		runtime::main_loop().schedule(boost::bind(&window::on_input_v8, this, e));
+		std::for_each(event_sinks_.begin(), event_sinks_.end(),
+			[&inp_e](event_sink* sink) { sink->on_input(inp_e); });
+
+		if (has(inp_e.type_str()))
+		{
+			runtime::main_loop().schedule(boost::bind(&window::on_input_v8, this, inp_e));
+		}
 	}
 }
 
@@ -233,12 +236,12 @@ void window_base::on_resize_v8(box<int> new_size)
 	emit("resize", 1, args);
 }
 
-void window_base::on_input_v8(input_event e)
+void window_base::on_input_v8(input_event inp_e)
 {
 	v8::HandleScope scope;
 
-	v8::Handle<v8::Value> args[1] = { e.to_v8() };
-	emit(e.type_str(), 1, args);
+	v8::Handle<v8::Value> args[1] = { inp_e.to_v8() };
+	emit(inp_e.type_str(), 1, args);
 }
 
 void window_base::on_event_v8(std::string type)

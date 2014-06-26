@@ -33,7 +33,6 @@
 {
 	window->handle_resize();
 }
-
 @end
 
 
@@ -194,10 +193,7 @@
 
 - (void)viewDidChangeBackingProperties
 {
-//    const NSRect contentRect = [window->view frame];
-//    const NSRect fbRect = [window->view convertRectToBacking: contentRect];
-
-//    _glfwInputFramebufferSize(window, fbRect.size.width, fbRect.size.height);
+	window->handle_backing_change();
 }
 
 - (void)keyDown:(NSEvent *)event
@@ -690,31 +686,59 @@ v8::Handle<v8::Value> window::run_file_dialog(v8::Arguments const& args)
 	return Undefined();
 }
 
-void window::handle_input(event& e)
+inline rectangle<int> to_rect(NSRect const& target, NSRect const& frame)
 {
-	if (preprocess_by_sink(e))
+	return rectangle<int>(target.origin.x, NSMaxY(frame) - NSMaxY(target),
+		target.size.width, target.size.height);
+}
+
+window::screen_info::screen_info(NSView* view)
+{
+	NSWindow* window = [view window];
+	NSScreen* screen = window? [window screen] : [NSScreen mainScreen];
+
+	if (NSAppKitVersionNumber < NSAppKitVersionNumber10_7)
 	{
-		return;
+		scale = 1;
+	}
+	else
+	{
+		scale = window? [window backingScaleFactor] : [screen backingScaleFactor];
 	}
 
+	NSWindowDepth const screen_depth = [screen depth];
+	color_depth = NSBitsPerPixelFromDepth(screen_depth);
+	color_depth_per_component = NSBitsPerSampleFromDepth(screen_depth);
+
+	NSRect const screen_frame = [screen frame];
+	rect = to_rect(screen_frame, screen_frame);
+	work_rect = to_rect([screen visibleFrame], screen_frame);
+}
+
+void window::handle_input(event e)
+{
 	input_event const inp_e(e);
 	on_input(inp_e);
-
-	if (postprocess_by_sink(e))
-	{
-		return;
-	}
 }
 
 void window::handle_resize()
 {
-	NSView* view = [object contentView];
-	NSRect rect = [view frame];
+	NSRect const rect = [view frame];
 
 	size_.width = rect.size.width;
 	size_.height = rect.size.height;
 
+	NSRect const backing_rect = [view convertRectToBacking:rect];
+	backing_size_.width = backing_rect.size.width;
+	backing_size_.height = backing_rect.size.height;
+
 	on_resize(size_);
+}
+
+void window::handle_backing_change()
+{
+	handle_resize();
+	on_screen_change();
 }
 
 void window::handle_close()

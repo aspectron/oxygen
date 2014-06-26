@@ -313,11 +313,6 @@ bool window::process(event& e)
 		return false;
 	}
 
-	if (preprocess_by_sink(e))
-	{
-		return true;
-	}
-
 	switch (e.message)
 	{
 	case WM_SIZE:
@@ -418,11 +413,6 @@ bool window::process(event& e)
 			return true;
 		}
 		break;
-	}
-
-	if (postprocess_by_sink(e))
-	{
-		return true;
 	}
 
 	if (message_handling_enabled_)
@@ -911,5 +901,33 @@ Handle<Value> window::run_file_dialog(Arguments const& args)
 
 	return Undefined();
 }
+
+#if 0
+window::screen_info window::screen() const
+{
+	device_scale_factor = 1;
+
+	HMONITOR hmonitor = MonitorFromWindow(hwnd_, MONITOR_DEFAULTTONEAREST);
+
+	MONITORINFOEXW monitor_info = {};
+	monitor_info.cbSize = sizeof(monitor_info);
+	GetMonitorInfoW(hmonitor, &monitor_info);
+
+	HDC hdc = CreateDCW(L"DISPLAY", monitor_info.szDevice, NULL, NULL);
+	color_depth_per_component = GetDeviceCaps(hdc, BITSPIXEL);
+	color_depth = color_depth_per_component * GetDeviceCaps(hdc, PLANES);
+	DeleteDC(hdc);
+
+	rect.left = monitor_info.rcMonitor.left;
+	rect.top = monitor_info.rcMonitor.top;
+	rect.width = monitor_info.rcMonitor.right - monitor_info.rcMonitor.left;
+	rect.height = monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top;
+
+	work_rect.left = monitor_info.rcWork.left;
+	work_rect.top = monitor_info.rcWork.top;
+	work_rect.width = monitor_info.rcWork.right - monitor_info.rcWork.left;
+	work_rect.height = monitor_info.rcWork.bottom - monitor_info.rcWork.top;
+}
+#endif
 
 }} // namespace aspect::gui
