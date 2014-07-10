@@ -19,8 +19,7 @@ public:
 	static void init();
 	static void cleanup();
 
-	explicit window(creation_args const& args);
-	explicit window(v8::Arguments const& args);
+	explicit window(v8::FunctionCallbackInfo<v8::Value> const& args);
 
 	~window() { destroy(); }
 
@@ -32,13 +31,13 @@ public:
 
 	window& on(std::string const& name, v8::Handle<v8::Function> fn)
 	{
-		window_base::on(name, fn);
+		window_base::on(rt_.isolate(), name, fn);
 		return *this;
 	}
 
 	window& off(std::string const& name)
 	{
-		window_base::off(name);
+		window_base::off(rt_.isolate(), name);
 		return *this;
 	}
 

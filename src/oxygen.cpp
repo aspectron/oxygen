@@ -4,8 +4,6 @@
 
 namespace aspect { namespace gui {
 
-using namespace v8;
-
 static box<int> get_screen_size()
 {
 	video_mode const curr_mode = get_current_video_mode();
@@ -14,11 +12,11 @@ static box<int> get_screen_size()
 
 DECLARE_LIBRARY_ENTRYPOINTS(oxygen_install, oxygen_uninstall);
 
-Handle<Value> oxygen_install()
+v8::Handle<v8::Value> oxygen_install(v8::Isolate* isolate)
 {
 	window::init();
 
-	v8pp::module oxygen_module;
+	v8pp::module oxygen_module(isolate);
 
 	/**
 	@module oxygen Oxygen
@@ -106,7 +104,7 @@ Handle<Value> oxygen_install()
 	  To set default window dimensions in Windows use zero for `width` and `height`.
 	  If `left` and `top` is unspecified, the window is centered on the screen.
 	**/
-	v8pp::class_<window> window_class(v8pp::v8_args_ctor);
+	v8pp::class_<window> window_class(isolate, v8pp::v8_args_ctor);
 	window_class
 		.inherit<v8_core::event_emitter>()
 		/**
@@ -234,7 +232,7 @@ Handle<Value> oxygen_install()
 	  * `FULLSCREEN`   Show window in full screen.
 	  * `APPLICATION`  Application main window.
 	**/
-	v8pp::module styles;
+	v8pp::module styles(isolate);
 	styles.set_const("NONE", GWS_NONE);
 	styles.set_const("TITLEBAR", GWS_TITLEBAR);
 	styles.set_const("RESIZE", GWS_RESIZE);
@@ -270,7 +268,7 @@ Handle<Value> oxygen_install()
 	  * `LEFT_SHIFT`, `RIGHT_SHIFT`
 	  * `LEFT_CONTROL`, `RIGHT_CONTROL`
 	**/
-	v8pp::module keys;
+	v8pp::module keys(isolate);
 #define KEY(name) if (KEY_##name >= 0) keys.set_const(#name, KEY_##name)
 	KEY(BACKSPACE); KEY(TAB); KEY(RETURN);
 	KEY(LEFT_SHIFT); KEY(RIGHT_SHIFT);
@@ -330,7 +328,7 @@ Handle<Value> oxygen_install()
 	  * `MOVE`        Arrows to 4  directions
 	  * `WAIT`        Hourglass
 	**/
-	v8pp::module cursors;
+	v8pp::module cursors(isolate);
 #define CURSOR(name) cursors.set_const(#name, window::name)
 	CURSOR(ARROW);
 	CURSOR(INPUT);
@@ -344,9 +342,9 @@ Handle<Value> oxygen_install()
 	return oxygen_module.new_instance();
 }
 
-void oxygen_uninstall(Handle<Value> library)
+void oxygen_uninstall(v8::Isolate* isolate, v8::Handle<v8::Value> library)
 {
-	v8pp::class_<window>::destroy_objects();
+	v8pp::class_<window>::destroy_objects(isolate);
 	window::cleanup();
 }
 

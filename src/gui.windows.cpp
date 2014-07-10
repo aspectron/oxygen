@@ -7,8 +7,6 @@
 #include <shellapi.h>
 #include <commdlg.h>
 
-using namespace v8;
-
 namespace aspect { namespace gui {
 
 static wchar_t const WINDOW_CLASS_NAME[] = L"jsx_generic";
@@ -116,6 +114,12 @@ LRESULT CALLBACK window::window_proc(HWND hwnd, UINT message, WPARAM wparam, LPA
 	*/
 
 	return ::DefWindowProc(hwnd, message, wparam, lparam);
+}
+
+window::window(v8::FunctionCallbackInfo<v8::Value> const& args)
+	: window_base(runtime::instance(args.GetIsolate()))
+{
+	init(creation_args(args));
 }
 
 void window::init(creation_args const& args)
@@ -381,7 +385,7 @@ bool window::process(event& e)
 				if (file.back() == 0) file.pop_back();
 			}
 			DragFinish(hDrop);
-			runtime::main_loop().schedule(boost::bind(&window::drag_accept_files, this, files));
+			rt_.main_loop().schedule(boost::bind(&window::drag_accept_files, this, files));
 		}
 		break;
 
@@ -417,8 +421,7 @@ bool window::process(event& e)
 
 	if (message_handling_enabled_)
 	{
-		runtime::main_loop().schedule(boost::bind(&window::v8_process_message, this,
-			(uint32_t)e.message, (uint32_t)e.wparam, (uint32_t)e.lparam));
+		rt_.main_loop().schedule(boost::bind(&window::v8_process_message, this, e));
 		return true;
 	}
 	return false;
@@ -457,10 +460,17 @@ void window::use_as_splash_screen(std::wstring const& filename)
 	}
 }
 
-void window::v8_process_message(uint32_t message, uint32_t wparam, uint32_t lparam)
+void window::v8_process_message(event e)
 {
-	v8::Handle<v8::Value> args[3] = { v8pp::to_v8(message), v8pp::to_v8(wparam), v8pp::to_v8(lparam) };
-	emit("message", 3, args);
+	v8::Isolate* isolate = rt_.isolate();
+	v8::HandleScope scope(isolate);
+
+	v8::Handle<v8::Value> args[3] = {
+		v8pp::to_v8(isolate, e.message),
+		v8pp::to_v8(isolate, e.wparam),
+		v8pp::to_v8(isolate, e.lparam)
+	};
+	emit(isolate, "message", 3, args);
 }
 
 void window::show(bool visible)
@@ -572,7 +582,7 @@ void window::set_rect(rectangle<int> const& rect)
 	update_window_size();
 }
 
-window& window::on(std::string const& name, Handle<Function> fn)
+window& window::on(std::string const& name, v8::Handle<v8::Function> fn)
 {
 	if (name == "message")
 	{
@@ -580,10 +590,10 @@ window& window::on(std::string const& name, Handle<Function> fn)
 	}
 	else if (name == "drag_accept_files")
 	{
-		runtime::main_loop().schedule(boost::bind(&window::drag_accept_files_enable_impl, this, true));
+		rt_.main_loop().schedule(boost::bind(&window::drag_accept_files_enable_impl, this, true));
 	}
 
-	window_base::on(name, fn);
+	window_base::on(rt_.isolate(), name, fn);
 	return *this;
 }
 
@@ -595,10 +605,10 @@ window& window::off(std::string const& name)
 	}
 	else if (name == "drag_accept_files")
 	{
-		runtime::main_loop().schedule(boost::bind(&window::drag_accept_files_enable_impl, this, false));
+		rt_.main_loop().schedule(boost::bind(&window::drag_accept_files_enable_impl, this, false));
 	}
 
-	window_base::off(name);
+	window_base::off(rt_.isolate(), name);
 	return *this;
 }
 
@@ -627,10 +637,11 @@ void window::drag_accept_files_enable_impl(bool enable)
 
 void window::drag_accept_files(shared_wstrings files)
 {
-	HandleScope scope;
+	v8::Isolate* isolate = rt_.isolate();
+	v8::HandleScope scope(isolate);
 
-	v8::Handle<v8::Value> args[1] = { v8pp::to_v8(*files) };
-	emit("drag_accept_files", 1, args);
+	v8::Handle<v8::Value> args[1] = { v8pp::to_v8(isolate, *files) };
+	emit(isolate, "drag_accept_files", 1, args);
 }
 
 input_event::input_event(event const& e)
@@ -770,9 +781,11 @@ uint32_t input_event::key_type_and_state(UINT message)
 	return result;
 }
 
-Handle<Value> window::run_file_dialog(Arguments const& args)
+void window::run_file_dialog(v8::FunctionCallbackInfo<v8::Value> const& args)
 {
-	HandleScope scope;
+	v8::Isolate* isolate = args.GetIsolate();
+
+	v8::EscapableHandleScope scope(isolate);
 
 	std::string type = "open";
 	bool multiselect = false;
@@ -785,43 +798,43 @@ Handle<Value> window::run_file_dialog(Arguments const& args)
 
 	if (args[0]->IsObject())
 	{
-		Handle<Object> options = args[0]->ToObject();
+		v8::Local<v8::Object> options = args[0]->ToObject();
 
-		get_option(options, "type", type);
+		get_option(isolate, options, "type", type);
 		if (type == "open")
 		{
-			get_option(options, "multiselect", multiselect);
+			get_option(isolate, options, "multiselect", multiselect);
 		}
-		get_option(options, "title", title);
+		get_option(isolate, options, "title", title);
 
-		Handle<Object> filter_obj;
-		if (get_option(options, "filter", filter_obj))
+		v8::Local<v8::Object> filter_obj;
+		if (get_option(isolate, options, "filter", filter_obj))
 		{
-			Handle<Array> filter_keys = filter_obj->GetPropertyNames();
+			v8::Local<v8::Array> filter_keys = filter_obj->GetPropertyNames();
 			for (uint32_t i = 0, count = filter_keys->Length(); i < count; ++i)
 			{
-				Handle<Value> key = filter_keys->Get(i);
-				Handle<Value> val = filter_obj->Get(key);
+				v8::Local<v8::Value> key = filter_keys->Get(i);
+				v8::Local<v8::Value> val = filter_obj->Get(key);
 
 				// description
-				filter += v8pp::from_v8<std::wstring>(val);
+				filter += v8pp::from_v8<std::wstring>(isolate, val);
 				filter += L'\0';
 				// mask
-				filter += v8pp::from_v8<std::wstring>(key);
+				filter += v8pp::from_v8<std::wstring>(isolate, key);
 				filter += L'\0';
 			}
 		}
 
-		get_option(options, "defaultDir", default_dir);
+		get_option(isolate, options, "defaultDir", default_dir);
 
-		get_option(options, "defaultExt", default_ext);
+		get_option(isolate, options, "defaultExt", default_ext);
 		if (!default_ext.empty() && default_ext[0] == L'.')
 		{
 			default_ext.erase(0, 1);
 		}
 
 		std::wstring default_name;
-		if (get_option(options, "defaultName", default_name))
+		if (get_option(isolate, options, "defaultName", default_name))
 		{
 			std::copy(default_name.begin(), default_name.end(), std::back_inserter(filename_buf));
 		}
@@ -872,7 +885,7 @@ Handle<Value> window::run_file_dialog(Arguments const& args)
 	{
 		if (multiselect)
 		{
-			Handle<Array> filenames = Array::New();
+			v8::Local<v8::Array> filenames = v8::Array::New(isolate);
 
 			std::wstring const dirname = ofn.lpstrFile;
 			ofn.lpstrFile += dirname.size() + 1;
@@ -882,24 +895,23 @@ Handle<Value> window::run_file_dialog(Arguments const& args)
 			{
 				std::wstring const filename = ofn.lpstrFile;
 				ofn.lpstrFile += filename.size() + 1;
-				filenames->Set(filecount, v8pp::to_v8(dirname + L'\\' + filename));
+				filenames->Set(filecount, v8pp::to_v8(isolate, dirname + L'\\' + filename));
 			}
 
 			if (filecount == 0)
 			{
 				// single selection
-				filenames->Set(0, v8pp::to_v8(dirname));
+				filenames->Set(0, v8pp::to_v8(isolate, dirname));
 			}
 
-			return scope.Close(filenames);
+			args.GetReturnValue().Set(scope.Escape(filenames));
 		}
 		else
 		{
-			return scope.Close(v8pp::to_v8<wchar_t const*>(ofn.lpstrFile));
+			v8::Local<v8::Value> filename = v8pp::to_v8<wchar_t const*>(isolate, ofn.lpstrFile);
+			args.GetReturnValue().Set(scope.Escape(filename));
 		}
 	}
-
-	return Undefined();
 }
 
 #if 0

@@ -327,6 +327,12 @@ void window::cleanup()
 //	[app_delegate release];
 }
 
+window::window(v8::FunctionCallbackInfo<v8::Value> const& args)
+	: window_base(runtime::instance(args.GetIsolate()))
+{
+	create(creation_args(args));
+}
+
 void window::create(creation_args args)
 {
 	style_ = args.style;
@@ -529,11 +535,10 @@ void window::use_as_splash_screen(std::string const& filename)
 	[object setContentView:image_view];
 }
 
-v8::Handle<v8::Value> window::run_file_dialog(v8::Arguments const& args)
+void window::run_file_dialog(v8::FunctionCallbackInfo<v8::Value> const& args)
 {
-	using namespace v8;
-
-	HandleScope scope;
+	v8::Isolate* isolate = args.GetIsolate();
+	v8::EscapableHandleScope scope(isolate);
 
 	std::string type = "open";
 	bool multiselect = false;
@@ -544,25 +549,25 @@ v8::Handle<v8::Value> window::run_file_dialog(v8::Arguments const& args)
 
 	if (args[0]->IsObject())
 	{
-		Handle<Object> options = args[0]->ToObject();
+		v8::Local<v8::Object> options = args[0]->ToObject();
 
-		get_option(options, "type", type);
+		get_option(isolate, options, "type", type);
 		if (type == "open")
 		{
-			get_option(options, "multiselect", multiselect);
+			get_option(isolate, options, "multiselect", multiselect);
 		}
 
 		std::string str;
-		get_option(options, "title", str);
+		get_option(isolate, options, "title", str);
 		if (!str.empty())
 		{
 			title = [NSString stringWithUTF8String:str.c_str()];
 		}
 
-		Handle<Object> filter_obj;
-		if (get_option(options, "filter", filter_obj))
+		v8::Local<v8::Object> filter_obj;
+		if (get_option(isolate, options, "filter", filter_obj))
 		{
-			Handle<Array> filter_keys = filter_obj->GetPropertyNames();
+			v8::Local<v8::Array> filter_keys = filter_obj->GetPropertyNames();
 			uint32_t const count = filter_keys->Length();
 
 			if (count > 0)
@@ -573,7 +578,7 @@ v8::Handle<v8::Value> window::run_file_dialog(v8::Arguments const& args)
 			for (uint32_t i = 0; i < count; ++i)
 			{
 				//Handle<Value> val = filter_obj->Get(key);
-				str = v8pp::from_v8<std::string>(filter_keys->Get(i));
+				str = v8pp::from_v8<std::string>(isolate, filter_keys->Get(i));
 
 				// using extensions without last dot
 				std::string::size_type const dot_pos = str.find_last_of('.');
@@ -593,14 +598,14 @@ v8::Handle<v8::Value> window::run_file_dialog(v8::Arguments const& args)
 		}
 
 		//get_option(options, "defaultExt", default_ext);
-		get_option(options, "defaultDir", str);
+		get_option(isolate, options, "defaultDir", str);
 		if (!str.empty())
 		{
 			NSString* dir = [NSString stringWithUTF8String:str.c_str()];
 			default_dir = [NSURL fileURLWithPath:dir isDirectory:YES];
 		}
 
-		get_option(options, "defaultName", str);
+		get_option(isolate, options, "defaultName", str);
 		if (!str.empty())
 		{
 			default_name = [NSString stringWithUTF8String:str.c_str()];
@@ -658,32 +663,32 @@ v8::Handle<v8::Value> window::run_file_dialog(v8::Arguments const& args)
 			if (multiselect)
 			{
 				uint32_t const count = [urls count];
-				Handle<Array> filenames = Array::New(count);
+				v8::Local<v8::Array> filenames = v8::Array::New(isolate, count);
 
 				for (uint32_t i = 0; i < count; ++i)
 				{
 					NSURL* url = [urls objectAtIndex:i];
 					char const* str = [url fileSystemRepresentation];
-					filenames->Set(i, v8pp::to_v8(str));
+					filenames->Set(i, v8pp::to_v8(isolate, str));
 				}
-				return scope.Close(filenames);
+				args.GetReturnValue().Set(scope.Escape(filenames));
 			}
 			else
 			{
 				NSURL* url = [urls objectAtIndex:0];
 				char const* str = [url fileSystemRepresentation];
-				return scope.Close(v8pp::to_v8(str));
+				v8::Local<v8::Value> filename = v8pp::to_v8(isolate, str);
+				args.GetReturnValue().Set(scope.Escape(filename));
 			}
 		}
 		else if (type == "save")
 		{
 			NSURL* url = [panel URL];
 			char const* str = [url fileSystemRepresentation];
-			return scope.Close(v8pp::to_v8(str));
+			v8::Local<v8::Value> filename = v8pp::to_v8(isolate, str);
+			args.GetReturnValue().Set(scope.Escape(filename));
 		}
 	}
-
-	return Undefined();
 }
 
 inline rectangle<int> to_rect(NSRect const& target, NSRect const& frame)

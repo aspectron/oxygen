@@ -21,22 +21,20 @@ public:
 	static void init();
 	static void cleanup();
 
-	explicit window(creation_args const& args) { create(args); }
-	explicit window(v8::Arguments const& args) { create(creation_args(args)); }
-
+	explicit window(v8::FunctionCallbackInfo<v8::Value> const& args);
 	~window() { destroy(); }
 
 	void destroy();
 
 	window& on(std::string const& name, v8::Handle<v8::Function> fn)
 	{
-		window_base::on(name, fn);
+		window_base::on(rt_.isolate(), name, fn);
 		return *this;
 	}
 
 	window& off(std::string const& name)
 	{
-		window_base::off(name);
+		window_base::off(rt_.isolate(), name);
 		return *this;
 	}
 
@@ -58,7 +56,7 @@ public:
 	void load_icon_from_file(std::string const&);
 	void use_as_splash_screen(std::string const& filename);
 
-	v8::Handle<v8::Value> run_file_dialog(v8::Arguments const& args);
+	void run_file_dialog(v8::FunctionCallbackInfo<v8::Value> const& args);
 
 public:
 // Retina display support

@@ -8,8 +8,6 @@
 
 #include <GL/glx.h>
 
-using namespace v8;
-
 namespace aspect { namespace gui {
 
 Display* g_display = nullptr;
@@ -280,8 +278,9 @@ bool create_pbuffer(XVisualInfo *visual_info)
 }
 */
 
-window::window(creation_args const& args)
-	: window_(0)
+window::window(v8::FunctionCallbackInfo<v8::Value> const& args)
+	: window_base(runtime::instance(args.GetIsolate()))
+	, window_(0)
 	, atom_close_(0)
 	, previous_video_mode_(-1)
 	, hidden_cursor_(0)
@@ -289,20 +288,7 @@ window::window(creation_args const& args)
 	, capture_count_(0)
 	, input_context_(nullptr)
 {
-	create(args);
-}
-
-window::window(v8::Arguments const& v8_args)
-	: window_(0)
-	, atom_close_(0)
-	, previous_video_mode_(-1)
-	, hidden_cursor_(0)
-	, current_cursor_(0)
-	, capture_count_(0)
-	, input_context_(nullptr)
-{
-	creation_args const args(v8_args);
-	create(args);
+	create(creation_args(args));
 }
 
 void window::create(creation_args const& args)

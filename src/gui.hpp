@@ -42,7 +42,7 @@ struct OXYGEN_API creation_args
 	std::string icon;
 #endif
 
-	explicit creation_args(v8::Arguments const& args);
+	explicit creation_args(v8::FunctionCallbackInfo<v8::Value> const& args);
 };
 
 struct graphics_settings
@@ -167,10 +167,10 @@ public:
 // V8 support
 
 	// Convert input event to V8 value
-	v8::Handle<v8::Value> to_v8() const;
+	v8::Handle<v8::Value> to_v8(v8::Isolate* isolate) const;
 
 	// Create an input_event form V8 value
-	static input_event from_v8(v8::Handle<v8::Value>);
+	static input_event from_v8(v8::Isolate* isolate, v8::Handle<v8::Value>);
 
 private:
 	input_event() {}
@@ -236,11 +236,14 @@ class OXYGEN_API window_base : public v8_core::event_emitter
 {
 	friend class event_sink;
 public:
-	window_base()
-		: size_(0, 0)
+	explicit window_base(runtime& rt)
+		: rt_(rt)
+		, size_(0, 0)
 		, style_(0)
 	{
 	}
+
+	runtime& rt() const { return rt_; }
 
 	// Window size
 	box<int> const& size() const { return size_; }
@@ -259,6 +262,7 @@ protected:
 	void on_input(input_event const& e);
 	void on_event(std::string const& type);
 
+	runtime& rt_;
 	box<int> size_;
 	unsigned style_;
 
@@ -309,19 +313,19 @@ struct convert<aspect::gui::input_event>
 {
 	typedef aspect::gui::input_event result_type;
 
-	static bool is_valid(v8::Handle<v8::Value> value)
+	static bool is_valid(v8::Isolate*, v8::Handle<v8::Value> value)
 	{
 		return value->IsObject();
 	}
 
-	static result_type from_v8(v8::Handle<v8::Value> value)
+	static result_type from_v8(v8::Isolate* isolate, v8::Handle<v8::Value> value)
 	{
-		return aspect::gui::input_event::from_v8(value);
+		return aspect::gui::input_event::from_v8(isolate, value);
 	}
 
-	static v8::Handle<v8::Value> to_v8(aspect::gui::input_event const& ev)
+	static v8::Handle<v8::Value> to_v8(v8::Isolate* isolate, aspect::gui::input_event const& ev)
 	{
-		return ev.to_v8();
+		return ev.to_v8(isolate);
 	}
 };
 

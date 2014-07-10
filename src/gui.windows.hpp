@@ -15,9 +15,7 @@ public:
 	static void init();
 	static void cleanup();
 
-	explicit window(creation_args const& args) { init(args); }
-	explicit window(v8::Arguments const& args) { init(creation_args(args)); }
-
+	explicit window(v8::FunctionCallbackInfo<v8::Value> const& args);
 	~window() { destroy(); }
 
 	void destroy();
@@ -45,7 +43,7 @@ public:
 	void set_focus();
 	void toggle_fullscreen();
 
-	v8::Handle<v8::Value> run_file_dialog(v8::Arguments const& args);
+	void run_file_dialog(v8::FunctionCallbackInfo<v8::Value> const& args);
 private:
 	void init(creation_args const& args);
 
@@ -65,7 +63,7 @@ private:
 
 private:
 	// handlers in V8 thread
-	void v8_process_message(uint32_t message, uint32_t wparam, uint32_t lparam);
+	void v8_process_message(event e);
 
 private:
 	HWND hwnd_;
