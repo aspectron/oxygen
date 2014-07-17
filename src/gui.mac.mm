@@ -15,18 +15,18 @@
 
 - (id)initWithWindow:(aspect::gui::window *)wnd
 {
-    self = [super init];
+	self = [super init];
 	if (self != nil)
 	{
 		window = wnd;
 	}
-    return self;
+	return self;
 }
 
 - (BOOL)windowShouldClose:(id)sender
 {
 	window->handle_close();
-    return YES;
+	return YES;
 }
 
 - (void)windowDidResize:(NSNotification*)notification
@@ -46,7 +46,7 @@
 //    for (window = _glfw.windowListHead;  window;  window = window->next)
 //        _glfwInputWindowCloseRequest(window);
 
-    return NSTerminateCancel;
+	return NSTerminateCancel;
 }
 
 - (void)applicationDidHide:(NSNotification *)notification
@@ -74,7 +74,7 @@
 
 @interface content_view : NSView
 {
-    aspect::gui::window* window;
+	aspect::gui::window* window;
 }
 
 - (id)initWithWindow:(aspect::gui::window *)wnd;
@@ -85,48 +85,47 @@
 
 + (void)initialize
 {
-    if (self == [content_view class])
-    {
+	if (self == [content_view class])
+	{
 	/*
-        if (cursor_ == nil)
-        {
-            NSImage* data = [[NSImage alloc] initWithSize:NSMakeSize(16, 16)];
-            cursor_ = [[NSCursor alloc] initWithImage:data hotSpot:NSZeroPoint];
-            [data release];
-        }
+		if (cursor_ == nil)
+		{
+			NSImage* data = [[NSImage alloc] initWithSize:NSMakeSize(16, 16)];
+			cursor_ = [[NSCursor alloc] initWithImage:data hotSpot:NSZeroPoint];
+			[data release];
+		}
 	*/
-    }
+	}
 }
 
 - (id)initWithWindow:(aspect::gui::window*)wnd
 {
-    self = [super init];
-    if (self)
-    {
-        window = wnd;
-    }
-
-    return self;
+	self = [super init];
+	if (self)
+	{
+		window = wnd;
+	}
+	return self;
 }
 
 - (BOOL)isOpaque
 {
-    return YES;
+	return YES;
 }
 
 - (BOOL)canBecomeKeyView
 {
-    return YES;
+	return YES;
 }
 
 - (BOOL)acceptsFirstResponder
 {
-    return YES;
+	return YES;
 }
 
 - (void)cursorUpdate:(NSEvent *)event
 {
-//    setModeCursor(window);
+//	setModeCursor(window);
 }
 
 - (void)mouseDown:(NSEvent *)event
@@ -136,7 +135,7 @@
 
 - (void)mouseDragged:(NSEvent *)event
 {
-    [self mouseMoved:event];
+	[self mouseMoved:event];
 }
 
 - (void)mouseUp:(NSEvent *)event
@@ -156,7 +155,7 @@
 
 - (void)rightMouseDragged:(NSEvent *)event
 {
-    [self mouseMoved:event];
+	[self mouseMoved:event];
 }
 
 - (void)rightMouseUp:(NSEvent *)event
@@ -171,7 +170,7 @@
 
 - (void)otherMouseDragged:(NSEvent *)event
 {
-    [self mouseMoved:event];
+	[self mouseMoved:event];
 }
 
 - (void)otherMouseUp:(NSEvent *)event
@@ -218,28 +217,28 @@
 
 - (void)resetCursorRects
 {
-    // This makes the cursor dissapear when the window is
-    // resized or received a drag operation
-    //[self discardCursorRects];
-    //[self addCursorRect:[self bounds] cursor:cursor_];
+	// This makes the cursor dissapear when the window is
+	// resized or received a drag operation
+	//[self discardCursorRects];
+	//[self addCursorRect:[self bounds] cursor:cursor_];
 }
 
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
 {
-    if ((NSDragOperationGeneric & [sender draggingSourceOperationMask])
-        == NSDragOperationGeneric)
-    {
-        [self setNeedsDisplay:YES];
-        return NSDragOperationGeneric;
-    }
+	if ((NSDragOperationGeneric & [sender draggingSourceOperationMask])
+		== NSDragOperationGeneric)
+	{
+		[self setNeedsDisplay:YES];
+		return NSDragOperationGeneric;
+	}
 
-    return NSDragOperationNone;
+	return NSDragOperationNone;
 }
 
 - (BOOL)prepareForDragOperation:(id <NSDraggingInfo>)sender
 {
-    [self setNeedsDisplay:YES];
-    return YES;
+	[self setNeedsDisplay:YES];
+	return YES;
 }
 
 - (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
@@ -271,12 +270,12 @@
         free(names);
     }
 */
-    return YES;
+	return YES;
 }
 
 - (void)concludeDragOperation:(id <NSDraggingInfo>)sender
 {
-    [self setNeedsDisplay:YES];
+	[self setNeedsDisplay:YES];
 }
 
 @end
@@ -288,8 +287,8 @@
 
 - (BOOL)canBecomeKeyWindow
 {
-    // Required for NSBorderlessWindowMask windows
-    return YES;
+	// Required for NSBorderlessWindowMask windows
+	return YES;
 }
 
 @end
@@ -304,10 +303,10 @@
 // down the command key don't get sent to the key window.
 - (void)sendEvent:(NSEvent *)event
 {
-    if ([event type] == NSKeyUp && ([event modifierFlags] & NSCommandKeyMask))
-        [[self keyWindow] sendEvent:event];
-    else
-        [super sendEvent:event];
+	if ([event type] == NSKeyUp && ([event modifierFlags] & NSCommandKeyMask))
+		[[self keyWindow] sendEvent:event];
+	else
+		[super sendEvent:event];
 }
 
 @end
@@ -697,29 +696,6 @@ inline rectangle<int> to_rect(NSRect const& target, NSRect const& frame)
 		target.size.width, target.size.height);
 }
 
-window::screen_info::screen_info(NSView* view)
-{
-	NSWindow* window = [view window];
-	NSScreen* screen = window? [window screen] : [NSScreen mainScreen];
-
-	if (NSAppKitVersionNumber < NSAppKitVersionNumber10_7)
-	{
-		scale = 1;
-	}
-	else
-	{
-		scale = window? [window backingScaleFactor] : [screen backingScaleFactor];
-	}
-
-	NSWindowDepth const screen_depth = [screen depth];
-	color_depth = NSBitsPerPixelFromDepth(screen_depth);
-	color_depth_per_component = NSBitsPerSampleFromDepth(screen_depth);
-
-	NSRect const screen_frame = [screen frame];
-	rect = to_rect(screen_frame, screen_frame);
-	work_rect = to_rect([screen visibleFrame], screen_frame);
-}
-
 void window::handle_input(event e)
 {
 	input_event const inp_e(e);
@@ -859,6 +835,29 @@ uint32_t input_event::type_and_state(int type, unsigned int modifiers)
 	if (modifiers & NSAlternateKeyMask) result |= ALT_DOWN;
 
 	return result;
+}
+
+screen_info::screen_info(window* w)
+{
+	NSWindow* window = w? w->object : nullptr;
+	NSScreen* screen = window? [window screen] : [NSScreen mainScreen];
+
+	if (NSAppKitVersionNumber < NSAppKitVersionNumber10_7)
+	{
+		scale = 1;
+	}
+	else
+	{
+		scale = window? [window backingScaleFactor] : [screen backingScaleFactor];
+	}
+
+	NSWindowDepth const screen_depth = [screen depth];
+	color_depth = NSBitsPerPixelFromDepth(screen_depth);
+	color_depth_per_component = NSBitsPerSampleFromDepth(screen_depth);
+
+	NSRect const screen_frame = [screen frame];
+	rect = to_rect(screen_frame, screen_frame);
+	work_rect = to_rect([screen visibleFrame], screen_frame);
 }
 
 }} // aspect::gui

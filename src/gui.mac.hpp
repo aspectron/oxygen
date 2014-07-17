@@ -58,28 +58,6 @@ public:
 
 	void run_file_dialog(v8::FunctionCallbackInfo<v8::Value> const& args);
 
-public:
-// Retina display support
-	struct screen_info
-	{
-		explicit screen_info(NSView* view = NULL);
-
-		/// Ratio between physical and logical pixels
-		float scale;
-
-		/// Color depth in bits per pixel
-		unsigned color_depth;
-
-		/// Color depth per component, assumed the colors are balanced equally
-		unsigned color_depth_per_component;
-
-		/// Screen rectangle
-		rectangle<int> rect;
-
-		/// Available rectangle
-		rectangle<int> work_rect;
-	};
-
 	/// Backing size
 	box<int> const& backing_size() const { return backing_size_; }
 

@@ -914,20 +914,21 @@ void window::run_file_dialog(v8::FunctionCallbackInfo<v8::Value> const& args)
 	}
 }
 
-#if 0
-window::screen_info window::screen() const
+screen_info::screen_info(window* w)
 {
-	device_scale_factor = 1;
+	scale = 1;
 
-	HMONITOR hmonitor = MonitorFromWindow(hwnd_, MONITOR_DEFAULTTONEAREST);
+	HWND hwnd = w? static_cast<HWND>(*w) : GetActiveWindow();
+	HMONITOR hmonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
 
-	MONITORINFOEXW monitor_info = {};
+	MONITORINFOEXW monitor_info;
+	memset(&monitor_info, 0, sizeof(monitor_info));
 	monitor_info.cbSize = sizeof(monitor_info);
 	GetMonitorInfoW(hmonitor, &monitor_info);
 
 	HDC hdc = CreateDCW(L"DISPLAY", monitor_info.szDevice, NULL, NULL);
-	color_depth_per_component = GetDeviceCaps(hdc, BITSPIXEL);
-	color_depth = color_depth_per_component * GetDeviceCaps(hdc, PLANES);
+	color_depth = GetDeviceCaps(hdc, BITSPIXEL);
+	color_depth_per_component = color_depth >= 24? 8 : 0;
 	DeleteDC(hdc);
 
 	rect.left = monitor_info.rcMonitor.left;
@@ -940,6 +941,5 @@ window::screen_info window::screen() const
 	work_rect.width = monitor_info.rcWork.right - monitor_info.rcWork.left;
 	work_rect.height = monitor_info.rcWork.bottom - monitor_info.rcWork.top;
 }
-#endif
 
 }} // namespace aspect::gui
