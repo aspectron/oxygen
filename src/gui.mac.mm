@@ -135,7 +135,7 @@
 
 - (void)mouseDragged:(NSEvent *)event
 {
-	[self mouseMoved:event];
+	window->handle_input(event);
 }
 
 - (void)mouseUp:(NSEvent *)event
@@ -155,7 +155,7 @@
 
 - (void)rightMouseDragged:(NSEvent *)event
 {
-	[self mouseMoved:event];
+	window->handle_input(event);
 }
 
 - (void)rightMouseUp:(NSEvent *)event
@@ -170,7 +170,7 @@
 
 - (void)otherMouseDragged:(NSEvent *)event
 {
-	[self mouseMoved:event];
+	window->handle_input(event);
 }
 
 - (void)otherMouseUp:(NSEvent *)event
@@ -736,10 +736,13 @@ input_event::input_event(event const& e)
 	switch (type)
 	{
 	case NSLeftMouseDown:
+	case NSLeftMouseDragged:
 	case NSLeftMouseUp:
 	case NSRightMouseDown:
+	case NSRightMouseDragged:
 	case NSRightMouseUp:
 	case NSOtherMouseDown:
+	case NSOtherMouseDragged:
 	case NSOtherMouseUp:
 	case NSScrollWheel:
 	case NSMouseMoved:
@@ -820,6 +823,9 @@ uint32_t input_event::type_and_state(int type, unsigned int modifiers)
 		result = MOUSE_WHEEL;
 		break;
 	case NSMouseMoved:
+	case NSLeftMouseDragged:
+	case NSRightMouseDragged:
+	case NSOtherMouseDragged:
 		result = MOUSE_MOVE;
 		break;
 	case NSKeyDown:
