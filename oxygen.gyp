@@ -7,6 +7,7 @@
             'dependencies': [
                 '<(jsx)/sdk/core/core.gyp:core',
                 '<(jsx)/extern/extern.gyp:*',
+                'oxygen_doc',
             ],
             'direct_dependent_settings': {
                 'include_dirs': ['src'],
@@ -45,6 +46,36 @@
                     ],
                     'libraries': ['-lX11', '-lXrandr', '-lGL'],
                 }],
+            ],
+        },
+        {
+            'target_name': 'oxygen_doc',
+            'type': 'none',
+            'dependencies': [
+                '<(jsx)/apps/jsx/jsx.gyp:*',
+            ],
+
+            'variables': {
+                'jsx_app': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)jsx<(EXECUTABLE_SUFFIX)',
+                'doc_dir': 'doc/oxygen',
+            },
+            'conditions': [
+                ['OS=="linux"', {
+                    'variables': { 'jsx_app': '<(out_dir)/<(EXECUTABLE_PREFIX)jsx<(EXECUTABLE_SUFFIX)' },
+                }],
+            ],
+
+            'actions': [
+                {
+                    'action_name': 'build_doc',
+                    'inputs': ['rte/oxygen.js', 'src/oxygen.cpp'],
+                    'outputs': ['<(doc_dir)/all.md'],
+                    'action': ['<(jsx_app)', '<(jsx)/build/tools/gendoc/run.js',
+                        '<(doc_dir)', 'rte/.+[.]js', 'src/.+[.]cpp',
+                    ],
+                    'msvs_cygwin_shell': 0,
+                    'message': 'Building documentation...',
+                },
             ],
         },
     ],
