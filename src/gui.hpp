@@ -306,29 +306,6 @@ private:
 	window_base& window_;
 };
 
-/// Screen information
-struct OXYGEN_API screen_info
-{
-	/// Get screen information for a window belongs to
-	/// If no window is supplied, use the screen for the active window
-	explicit screen_info(window* w = nullptr);
-
-	/// Ratio between physical and logical pixels
-	float scale;
-
-	/// Color depth in bits per pixel
-	unsigned color_depth;
-
-	/// Color depth per component, assumed the colors are balanced equally
-	unsigned color_depth_per_component;
-
-	/// Screen rectangle
-	rectangle<int> rect;
-
-	/// Available rectangle
-	rectangle<int> work_rect;
-};
-
 }} // aspect::gui
 
 namespace v8pp {

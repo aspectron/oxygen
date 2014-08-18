@@ -39,7 +39,7 @@ public:
 	void capture_mouse(bool capture);
 	void set_mouse_pos(int x, int y);
 	void show(bool visible);
-	void switch_to_fullscreen(video_mode const& mode);
+	void switch_to_fullscreen(display::mode const& mode, display const* disp = nullptr);
 	void set_focus();
 	void toggle_fullscreen();
 

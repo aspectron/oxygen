@@ -16,7 +16,9 @@ creation_args::creation_args(v8::FunctionCallbackInfo<v8::Value> const& args)
 		throw std::runtime_error("Window constructor requires configuration object as an argument");
 	}
 
-	video_mode const& curr_mode = get_current_video_mode();
+	display disp = display::primary();
+	get_option(isolate, options, "display", disp);
+	display::mode const& curr_mode = disp.current_mode();
 
 	get_option(isolate, options, "width", width = curr_mode.width);
 	get_option(isolate, options, "height", height = curr_mode.height);

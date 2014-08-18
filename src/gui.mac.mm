@@ -843,27 +843,4 @@ uint32_t input_event::type_and_state(int type, unsigned int modifiers)
 	return result;
 }
 
-screen_info::screen_info(window* w)
-{
-	NSWindow* window = w? w->object : nullptr;
-	NSScreen* screen = window? [window screen] : [NSScreen mainScreen];
-
-	if (NSAppKitVersionNumber < NSAppKitVersionNumber10_7)
-	{
-		scale = 1;
-	}
-	else
-	{
-		scale = window? [window backingScaleFactor] : [screen backingScaleFactor];
-	}
-
-	NSWindowDepth const screen_depth = [screen depth];
-	color_depth = NSBitsPerPixelFromDepth(screen_depth);
-	color_depth_per_component = NSBitsPerSampleFromDepth(screen_depth);
-
-	NSRect const screen_frame = [screen frame];
-	rect = to_rect(screen_frame, screen_frame);
-	work_rect = to_rect([screen visibleFrame], screen_frame);
-}
-
 }} // aspect::gui

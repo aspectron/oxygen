@@ -16,31 +16,34 @@
             'sources': [
                 'src/gui.cpp',
                 'src/gui.hpp',
+                'src/display.hpp',
                 'src/keys.hpp',
                 'src/oxygen.cpp',
                 'src/oxygen.hpp',
-                'src/video_modes.cpp',
-                'src/video_modes.hpp',
             ],
             'conditions': [
                 ['OS=="win"', {
                     'sources': [
+                        'src/display.windows.cpp',
                         'src/gui.windows.cpp',
                         'src/gui.windows.hpp',
                     ],
                 }],
                 ['OS=="mac"', {
                     'sources': [
+                        'src/display.mac.mm',
                         'src/gui.mac.mm',
                         'src/gui.mac.hpp',
                     ],
                     'libraries': [
                         'AppKit.framework',
                         'CoreGraphics.framework',
+                        'IOKit.framework',
                     ],
                 }],
                 ['OS not in ["win", "mac"]', {
                     'sources': [
+                        'src/display.x11.cpp',
                         'src/gui.x11.cpp',
                         'src/gui.x11.hpp',
                     ],

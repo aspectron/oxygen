@@ -2,7 +2,16 @@ pragma("event-queue");
 
 var oxygen = require("oxygen");
 
-console.log("Screen size:", oxygen.getScreenSize());
+
+oxygen.Display.enumerate().forEach(function(display)
+	{
+		console.log("display name: %s colorDepth: %d rectangle: %o workRectangle: %o",
+			display.name, display.colorDepth, display.rectangle, display.workRectangle);
+		console.log('display modes:', display.modes());
+		console.log('display current mode:', display.currentMode());
+	});
+
+console.log('primary display:', oxygen.Display.primary().name)
 
 console.log("Creating window...");
 

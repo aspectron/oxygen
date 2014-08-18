@@ -19,7 +19,7 @@
 #endif
 
 #include "geometry.hpp"
-#include "video_modes.hpp"
+#include "display.hpp"
 #include "gui.hpp"
 #if OS(WINDOWS)
 #include "gui.windows.hpp"

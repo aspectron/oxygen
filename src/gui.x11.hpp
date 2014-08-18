@@ -11,7 +11,18 @@ namespace aspect { namespace gui {
 
 extern Display* g_display;
 extern int g_screen;
+extern Window g_root;
 extern XIM g_input_method;
+
+struct randr_info {
+	bool is_available;
+	int event_base;
+	int error_base;
+	int version_major;
+	int version_minor;
+};
+
+extern randr_info randr;
 
 class OXYGEN_API window : public window_base
 {
@@ -25,7 +36,7 @@ public:
 
 	void destroy();
 
-	operator Window&() { return window_; }
+	operator Window() const { return window_; }
 
 	XVisualInfo& current_visual() { return current_visual_; }
 
@@ -62,7 +73,7 @@ private:
 	void create(creation_args const& args);
 	void _init();
 	void create_hidden_cursor();
-	bool switch_to_fullscreen(video_mode const& mode);
+	bool switch_to_fullscreen(display::mode const& mode);
 	void _cleanup();
 
 	void process(XEvent& event);

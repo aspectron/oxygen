@@ -198,7 +198,7 @@ void window::create(creation_args args)
 	// Switch to fullscreen if requested
 	if ((style_ & GWS_FULLSCREEN))
 	{
-		video_mode const mode(args.width, args.height, args.bpp, 0);
+		display::mode const mode(args.width, args.height, args.bpp, 0);
 		switch_to_fullscreen(mode);
 	}
 
@@ -452,8 +452,8 @@ void window::use_as_splash_screen(std::wstring const& filename)
 		BITMAPINFO const* bmi = (BITMAPINFO*)(bfh+1);
 		int const width  = bmi->bmiHeader.biWidth;
 		int const height = bmi->bmiHeader.biHeight;
-		int const left   = (get_current_video_mode().width - width)  / 2;
-		int const top    = (get_current_video_mode().height - height) / 2;
+		int const left   = 0;//(get_current_video_mode().width - width)  / 2;
+		int const top    = 0;//(get_current_video_mode().height - height) / 2;
 
 		::SetWindowPos(hwnd_, HWND_TOPMOST, left, top, width, height, SWP_SHOWWINDOW);
 		::InvalidateRect(hwnd_, NULL, FALSE);
@@ -478,7 +478,7 @@ void window::show(bool visible)
 	::ShowWindow(hwnd_, visible? SW_SHOW : SW_HIDE);
 }
 
-void window::switch_to_fullscreen(video_mode const& mode)
+void window::switch_to_fullscreen(display::mode const& mode, display const* disp)
 {
 	DEVMODE DevMode;
 	DevMode.dmSize       = sizeof(DEVMODE);
@@ -912,34 +912,6 @@ void window::run_file_dialog(v8::FunctionCallbackInfo<v8::Value> const& args)
 			args.GetReturnValue().Set(scope.Escape(filename));
 		}
 	}
-}
-
-screen_info::screen_info(window* w)
-{
-	scale = 1;
-
-	HWND hwnd = w? static_cast<HWND>(*w) : GetActiveWindow();
-	HMONITOR hmonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-
-	MONITORINFOEXW monitor_info;
-	memset(&monitor_info, 0, sizeof(monitor_info));
-	monitor_info.cbSize = sizeof(monitor_info);
-	GetMonitorInfoW(hmonitor, &monitor_info);
-
-	HDC hdc = CreateDCW(L"DISPLAY", monitor_info.szDevice, NULL, NULL);
-	color_depth = GetDeviceCaps(hdc, BITSPIXEL);
-	color_depth_per_component = color_depth >= 24? 8 : 0;
-	DeleteDC(hdc);
-
-	rect.left = monitor_info.rcMonitor.left;
-	rect.top = monitor_info.rcMonitor.top;
-	rect.width = monitor_info.rcMonitor.right - monitor_info.rcMonitor.left;
-	rect.height = monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top;
-
-	work_rect.left = monitor_info.rcWork.left;
-	work_rect.top = monitor_info.rcWork.top;
-	work_rect.width = monitor_info.rcWork.right - monitor_info.rcWork.left;
-	work_rect.height = monitor_info.rcWork.bottom - monitor_info.rcWork.top;
 }
 
 }} // namespace aspect::gui

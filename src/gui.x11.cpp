@@ -12,7 +12,9 @@ namespace aspect { namespace gui {
 
 Display* g_display = nullptr;
 int g_screen = 0;
+Window g_root = 0;
 XIM g_input_method = nullptr;
+randr_info randr;
 
 static XContext window_context;
 static boost::thread process_events_thread;
@@ -45,7 +47,16 @@ void window::init()
 	}
 
 	g_screen = DefaultScreen(g_display);
+	g_root = RootWindow(g_display, g_screen);
 	g_input_method = XOpenIM(g_display, nullptr, nullptr, nullptr);
+
+	randr.is_available = XRRQueryExtension(g_display, &randr.event_base, &randr.error_base)
+		&& XRRQueryVersion(g_display, &randr.version_major, &randr.version_minor);
+	if (randr.is_available && (randr.version_major == 1 && randr.version_minor < 3))
+	{
+		// required RandR version at least 1.3
+		randr.is_available = false;
+	}
 
 	is_running = true;
 	process_events_thread = boost::thread(&window::process_events);
@@ -70,7 +81,7 @@ void window::cleanup()
 	}
 
 	g_screen = 0;
-
+	g_root = 0;
 	if (g_display)
 	{
 		XCloseDisplay(g_display);
@@ -309,7 +320,7 @@ void window::create(creation_args const& args)
 	// Switch to fullscreen if necessary
 	if (fullscreen)
 	{
-		switch_to_fullscreen(video_mode(args.width, args.height, args.bpp, 0));
+		switch_to_fullscreen(display::mode(args.width, args.height, args.bpp, 0));
 	}
 
 	// Create the rendering context
@@ -320,7 +331,7 @@ void window::create(creation_args const& args)
 	}
 
 	// Create a new color map with the chosen visual
-	Colormap ColMap = XCreateColormap(g_display, RootWindow(g_display, g_screen), current_visual_.visual, AllocNone);
+	Colormap ColMap = XCreateColormap(g_display, g_root, current_visual_.visual, AllocNone);
 
 	// Define the window attributes
 	XSetWindowAttributes Attributes;
@@ -329,8 +340,7 @@ void window::create(creation_args const& args)
 	Attributes.override_redirect = fullscreen;
 
 	// Create the window
-	window_ = XCreateWindow(g_display,
-		RootWindow(g_display, g_screen),
+	window_ = XCreateWindow(g_display, g_root,
 		left, top,
 		width, height,
 		0,
@@ -487,7 +497,7 @@ void window::create_hidden_cursor()
 	XFreePixmap(g_display, CursorPixmap);
 }
 
-bool window::switch_to_fullscreen(video_mode const& mode)
+bool window::switch_to_fullscreen(display::mode const& mode)
 {
 	bool result = false;
 
@@ -496,7 +506,7 @@ bool window::switch_to_fullscreen(video_mode const& mode)
 	if (XQueryExtension(g_display, "RANDR", &Version, &Version, &Version))
 	{
 		// Get the current configuration
-		XRRScreenConfiguration* Config = XRRGetScreenInfo(g_display, RootWindow(g_display, g_screen));
+		XRRScreenConfiguration* Config = XRRGetScreenInfo(g_display, g_root);
 		if (Config)
 		{
 			// Get the available screen sizes
@@ -514,7 +524,7 @@ bool window::switch_to_fullscreen(video_mode const& mode)
 						previous_video_mode_ = XRRConfigCurrentConfiguration(Config, &current_rotation);
 
 						// Switch to fullscreen mode
-						XRRSetScreenConfig(g_display, Config, RootWindow(g_display, g_screen), i, current_rotation, CurrentTime);
+						XRRSetScreenConfig(g_display, Config, g_root, i, current_rotation, CurrentTime);
 						result = true;
 						break;
 					}
@@ -574,7 +584,7 @@ void window::_cleanup()
 	if (previous_video_mode_ >= 0)
 	{
 		// Get current screen info
-		XRRScreenConfiguration* Config = XRRGetScreenInfo(g_display, RootWindow(g_display, g_screen));
+		XRRScreenConfiguration* Config = XRRGetScreenInfo(g_display, g_root);
 		if (Config)
 		{
 			// Get the current rotation
@@ -582,7 +592,7 @@ void window::_cleanup()
 			XRRConfigCurrentConfiguration(Config, &current_rotation);
 
 			// Reset the video mode
-			XRRSetScreenConfig(g_display, Config, RootWindow(g_display, g_screen), previous_video_mode_, current_rotation, CurrentTime);
+			XRRSetScreenConfig(g_display, Config, g_root, previous_video_mode_, current_rotation, CurrentTime);
 
 			// Free the configuration instance
 			XRRFreeScreenConfigInfo(Config);

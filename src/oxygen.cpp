@@ -4,10 +4,37 @@
 
 namespace aspect { namespace gui {
 
-static box<int> get_screen_size()
+static void display_enumerate_v8(v8::FunctionCallbackInfo<v8::Value> const& args)
 {
-	video_mode const curr_mode = get_current_video_mode();
-	return box<int>(curr_mode.width, curr_mode.height);
+	v8::Isolate* isolate = args.GetIsolate();
+	v8::EscapableHandleScope scope(isolate);
+
+	std::vector<display> result = display::enumerate();
+	v8::Local<v8::Array> arr = v8::Array::New(isolate, static_cast<int>(result.size()));
+	for (uint32_t i = 0; i < result.size(); ++i)
+	{
+		arr->Set(i, v8pp::class_<display>::import_external(isolate, new display(result[i])));
+	}
+	args.GetReturnValue().Set(scope.Escape(arr));
+}
+
+static void display_primary_v8(v8::FunctionCallbackInfo<v8::Value> const& args)
+{
+	v8::Isolate* isolate = args.GetIsolate();
+
+	args.GetReturnValue().Set(v8pp::class_<display>::import_external(isolate, new display(display::primary())));
+}
+
+static void display_from_window_v8(v8::FunctionCallbackInfo<v8::Value> const& args)
+{
+	v8::Isolate* isolate = args.GetIsolate();
+
+	window const* wnd = v8pp::from_v8<window*>(isolate, args[0]);
+	if (args.Length() > 0 && !wnd)
+	{
+		throw std::invalid_argument("required window argument");
+	}
+	args.GetReturnValue().Set(v8pp::class_<display>::import_external(isolate, new display(display::from_window(wnd))));
 }
 
 DECLARE_LIBRARY_ENTRYPOINTS(oxygen_install, oxygen_uninstall);
@@ -25,10 +52,72 @@ v8::Handle<v8::Value> oxygen_install(v8::Isolate* isolate)
 	**/
 
 	/**
-	@function getScreenSize()
-	Return current screen dimensions, object with `width` and `height` attributes.
+	@class Display
+	Display information. Contains information about display monitor, such as
+	color depth, dimensions in pixels, current display mode.
+	
+	Display `Mode` is an object with following attributes:
+	  * `width`       - display width in pixels
+	  * `height`      - display height in pixels
+	  * `colorDepth`  - display color depth, bits per pixel
+	  * `frequency`   - display refresh rate, Hz
 	**/
-	oxygen_module.set("getScreenSize", get_screen_size);
+	v8pp::class_<display> display_class(isolate, v8pp::no_ctor);
+	display_class
+		/**
+		@function enumerate()
+		@return {Array}
+		Enumerate display monitors. Return array of Display objects.
+		**/
+		.set("enumerate", display_enumerate_v8)
+
+		/**
+		@function primary()
+		@return {Display}
+		Get primary display instance.
+		**/
+		.set("primary", display_primary_v8)
+
+		/**
+		@function fromWindow(Window window)
+		@param window {Window}
+		@return {Display}
+		Get display instance for a specified window.
+		**/
+		.set("fromWindow", display_from_window_v8)
+
+		/**
+		@property name {String} Display name
+		**/
+		.set("name", &display::name)
+		/**
+		@property colorDepth {Number} Display color depth, bits per pixel
+		**/
+		.set("colorDepth", &display::color_depth)
+		/**
+		@property rectangle {Rectangle} Display rectangle object `{ left, top, width, height }`
+		**/
+		.set("rectangle", &display::rect)
+		/**
+		@property workRectangle {Rectangle} Display work area rectangle object `{ left, top, width, height }`
+		**/
+		.set("workRectangle", &display::work_rect)
+
+		/**
+		@function modes()
+		@return {Array}
+		Supported display modes. Return array of `Mode` objects
+		**/
+		.set("modes", &display::modes)
+
+		/**
+		@function currentMode()
+		@return {Mode}
+		Current display mode.
+		**/
+		.set("currentMode", &display::current_mode)
+		;
+	oxygen_module.set("Display", display_class);
 
 	/**
 	@class Window Window class
