@@ -4,8 +4,8 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrandr.h>
 
-#include "geometry.hpp"
-#include "gui.hpp"
+#include "jsx/geometry.hpp"
+#include "oxygen/gui.hpp"
 
 namespace aspect { namespace gui {
 

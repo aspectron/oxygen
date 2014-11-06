@@ -1,6 +1,7 @@
-#include "oxygen.hpp"
-#include "library.hpp"
-#include "keys.hpp"
+#include "oxygen/oxygen.hpp"
+#include "oxygen/keys.hpp"
+
+#include "jsx/library.hpp"
 
 namespace aspect { namespace gui {
 
@@ -433,6 +434,7 @@ v8::Handle<v8::Value> oxygen_install(v8::Isolate* isolate)
 
 void oxygen_uninstall(v8::Isolate* isolate, v8::Handle<v8::Value> library)
 {
+	(void)library;
 	v8pp::class_<window>::destroy_objects(isolate);
 	window::cleanup();
 }

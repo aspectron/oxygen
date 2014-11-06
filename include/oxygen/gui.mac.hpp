@@ -1,8 +1,8 @@
 #ifndef OXYGEN_GUI_MAC_HPP_INCLUDED
 #define OXYGEN_GUI_MAC_HPP_INCLUDED
 
-#include "geometry.hpp"
-#include "gui.hpp"
+#include "jsx/geometry.hpp"
+#include "oxygen/gui.hpp"
 
 #ifdef __OBJC__
 #import <Cocoa/Cocoa.h>

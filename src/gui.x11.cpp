@@ -1,5 +1,5 @@
-#include "oxygen.hpp"
-#include "gui.x11.hpp"
+#include "oxygen/oxygen.hpp"
+#include "oxygen/gui.x11.hpp"
 
 #include <X11/Xlib.h>
 #include <X11/cursorfont.h>

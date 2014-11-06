@@ -1,5 +1,5 @@
-#include "oxygen.hpp"
-#include "gui.windows.hpp"
+#include "oxygen/oxygen.hpp"
+#include "oxygen/gui.windows.hpp"
 
 #include <boost/iostreams/device/mapped_file.hpp>
 

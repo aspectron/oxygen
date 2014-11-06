@@ -13,8 +13,6 @@
 #include <X11/extensions/Xrandr.h>
 #endif
 
-#include "geometry.hpp"
-
 namespace aspect { namespace gui {
 
 class window;

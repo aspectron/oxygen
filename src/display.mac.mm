@@ -1,5 +1,5 @@
-#include "oxygen.hpp"
-#include "display.hpp"
+#include "oxygen/oxygen.hpp"
+#include "oxygen/display.hpp"
 
 #include <IOKit/graphics/IOGraphicsLib.h>
 

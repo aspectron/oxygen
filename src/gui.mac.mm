@@ -1,5 +1,5 @@
-#include "oxygen.hpp"
-#include "gui.mac.hpp"
+#include "oxygen/oxygen.hpp"
+#include "oxygen/gui.mac.hpp"
 
 @interface window_delegate : NSObject
 {

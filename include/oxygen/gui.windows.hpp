@@ -4,8 +4,8 @@
 #include <boost/atomic.hpp>
 #include <boost/scoped_array.hpp>
 
-#include "geometry.hpp"
-#include "gui.hpp"
+#include "jsx/geometry.hpp"
+#include "oxygen/gui.hpp"
 
 namespace aspect { namespace gui {
 
