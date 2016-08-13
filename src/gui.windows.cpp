@@ -1,19 +1,26 @@
 #include "oxygen/oxygen.hpp"
 #include "oxygen/gui.windows.hpp"
 
-#include <boost/iostreams/device/mapped_file.hpp>
+#include <iostream>
+#include <fstream>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
 #include <windowsx.h>
 #include <shellapi.h>
 #include <commdlg.h>
 
+#include <v8pp/class.hpp>
+#include <v8pp/object.hpp>
+
 namespace aspect { namespace gui {
 
 static wchar_t const WINDOW_CLASS_NAME[] = L"jsx_generic";
 
-static boost::thread window_thread_;
-static boost::mutex window_create_mutex_;
-static boost::condition_variable window_created_cv_;
+static std::thread window_thread_;
+static std::mutex window_create_mutex_;
+static std::condition_variable window_created_cv_;
 
 void post_thread_message(UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -42,7 +49,7 @@ void window::init()
 	// now, we can register this class
 	RegisterClassW(&wc);
 
-	window_thread_ = boost::thread(&window::message_loop);
+	window_thread_ = std::thread(&window::message_loop);
 }
 
 void window::cleanup()
@@ -55,7 +62,7 @@ void window::cleanup()
 
 void window::message_loop()
 {
-	os::set_thread_name("window::message_loop");
+//	os::set_thread_name("window::message_loop");
 
 	MSG msg;
 
@@ -72,7 +79,7 @@ void window::message_loop()
 				window* w = reinterpret_cast<window*>(msg.wParam);
 				creation_args const* args = reinterpret_cast<creation_args const*>(msg.lParam);
 
-				boost::mutex::scoped_lock lock(window_create_mutex_);
+				std::unique_lock<std::mutex> lock(window_create_mutex_);
 				w->create(*args);
 				window_created_cv_.notify_one();
 			}
@@ -113,11 +120,10 @@ LRESULT CALLBACK window::window_proc(HWND hwnd, UINT message, WPARAM wparam, LPA
 		return 0;
 	*/
 
-	return ::DefWindowProc(hwnd, message, wparam, lparam);
+	return ::DefWindowProcW(hwnd, message, wparam, lparam);
 }
 
 window::window(v8::FunctionCallbackInfo<v8::Value> const& args)
-	: window_base(runtime::instance(args.GetIsolate()))
 {
 	init(creation_args(args));
 }
@@ -137,7 +143,7 @@ void window::init(creation_args const& args)
 	post_thread_message(WM_USER, (WPARAM)this, (LPARAM)&args);
 
 	// wait for the window create completion
-	boost::mutex::scoped_lock lock(window_create_mutex_);
+	std::unique_lock<std::mutex> lock(window_create_mutex_);
 	while (!hwnd_)
 	{
 		window_created_cv_.wait(lock);
@@ -189,7 +195,7 @@ void window::create(creation_args args)
 		window_style |= WS_VISIBLE;
 	}
 
-#if TARGET(DEBUG)
+#ifdef DEBUG
 	args.caption += L" (DEBUG)";
 #endif
 
@@ -374,18 +380,18 @@ bool window::process(event& e)
 	case WM_DROPFILES:
 		{
 			HDROP hDrop = (HDROP)e.wparam;
-			UINT const count = DragQueryFile(hDrop, (UINT)-1, NULL, NULL);
-			shared_wstrings files = boost::make_shared<wstrings>(count);
+			UINT const count = DragQueryFileW(hDrop, (UINT)-1, NULL, NULL);
+			wstrings files(count);
 			for (UINT i = 0; i < count; ++i)
 			{
-				std::wstring& file = (*files)[i];
-				UINT const len = DragQueryFile(hDrop, i, NULL, 0) + 1;
+				std::wstring& file = files[i];
+				UINT const len = DragQueryFileW(hDrop, i, NULL, 0) + 1;
 				file.resize(len);
-				DragQueryFile(hDrop, i, &file[0], len);
+				DragQueryFileW(hDrop, i, &file[0], len);
 				if (file.back() == 0) file.pop_back();
 			}
 			DragFinish(hDrop);
-			rt_.main_loop().schedule(boost::bind(&window::drag_accept_files, this, files));
+			call_in_node([this, files](){ drag_accept_files(files); });
 		}
 		break;
 
@@ -400,11 +406,11 @@ bool window::process(event& e)
 		break;
 
 	case WM_PAINT:
-		if (splash_bitmap_)
+		if (!splash_bitmap_.empty())
 		{
 			HDC hdc = ::GetDC(hwnd_);
 
-			BITMAPFILEHEADER const* bfh = (BITMAPFILEHEADER*)splash_bitmap_.get();
+			BITMAPFILEHEADER const* bfh = (BITMAPFILEHEADER*)splash_bitmap_.data();
 			BITMAPINFO const* bmi = (BITMAPINFO*)(bfh + 1);
 
 			void const* data = ((uint8_t*)bfh + bfh->bfOffBits);
@@ -421,7 +427,7 @@ bool window::process(event& e)
 
 	if (message_handling_enabled_)
 	{
-		rt_.main_loop().schedule(boost::bind(&window::v8_process_message, this, e));
+		call_in_node([this, e]() { v8_process_message(e); });
 		return true;
 	}
 	return false;
@@ -431,24 +437,18 @@ void window::use_as_splash_screen(std::wstring const& filename)
 {
 	if (filename.empty())
 	{
-		splash_bitmap_.reset();
+		splash_bitmap_.clear();
 		show_frame(true);
 		::InvalidateRect(hwnd_, NULL, FALSE);
 	}
 	else
 	{
-		boost::filesystem::path const fn = filename;
-		boost::iostreams::mapped_file_source file(fn);
-		if (file.is_open())
-		{
-			splash_bitmap_.reset(new uint8_t[file.size()]);
-			memcpy(splash_bitmap_.get(), file.data(), file.size());
-		}
-		file.close();
-
+		std::ifstream file(filename, std::ios::binary);
+		std::istream_iterator<uint8_t> file_begin(file), file_end;
+		splash_bitmap_.assign(file_begin, file_end);
 		show_frame(false);
 
-		BITMAPFILEHEADER const* bfh = (BITMAPFILEHEADER*)splash_bitmap_.get();
+		BITMAPFILEHEADER const* bfh = (BITMAPFILEHEADER*)splash_bitmap_.data();
 		BITMAPINFO const* bmi = (BITMAPINFO*)(bfh+1);
 		int const width  = bmi->bmiHeader.biWidth;
 		int const height = bmi->bmiHeader.biHeight;
@@ -462,7 +462,7 @@ void window::use_as_splash_screen(std::wstring const& filename)
 
 void window::v8_process_message(event e)
 {
-	v8::Isolate* isolate = rt_.isolate();
+	v8::Isolate* isolate = v8::Isolate::GetCurrent();
 	v8::HandleScope scope(isolate);
 
 	v8::Handle<v8::Value> args[3] = {
@@ -470,7 +470,7 @@ void window::v8_process_message(event e)
 		v8pp::to_v8(isolate, e.wparam),
 		v8pp::to_v8(isolate, e.lparam)
 	};
-	emit(isolate, "message", 3, args);
+	emit("message", v8pp::to_v8(isolate, this), 3, args);
 }
 
 void window::show(bool visible)
@@ -590,10 +590,10 @@ window& window::on(std::string const& name, v8::Handle<v8::Function> fn)
 	}
 	else if (name == "drag_accept_files")
 	{
-		rt_.main_loop().schedule(boost::bind(&window::drag_accept_files_enable_impl, this, true));
+		call_in_node([this](){ drag_accept_files_enable_impl(true); });
 	}
 
-	window_base::on(rt_.isolate(), name, fn);
+	window_base::on(name, fn);
 	return *this;
 }
 
@@ -605,10 +605,10 @@ window& window::off(std::string const& name)
 	}
 	else if (name == "drag_accept_files")
 	{
-		rt_.main_loop().schedule(boost::bind(&window::drag_accept_files_enable_impl, this, false));
+		call_in_node([this](){ drag_accept_files_enable_impl(false); });
 	}
 
-	window_base::off(rt_.isolate(), name);
+	window_base::off(name, {});
 	return *this;
 }
 
@@ -635,13 +635,13 @@ void window::drag_accept_files_enable_impl(bool enable)
 	::DragAcceptFiles(hwnd_, enable);
 }
 
-void window::drag_accept_files(shared_wstrings files)
+void window::drag_accept_files(wstrings files)
 {
-	v8::Isolate* isolate = rt_.isolate();
+	v8::Isolate* isolate = v8::Isolate::GetCurrent();
 	v8::HandleScope scope(isolate);
 
-	v8::Handle<v8::Value> args[1] = { v8pp::to_v8(isolate, *files) };
-	emit(isolate, "drag_accept_files", 1, args);
+	v8::Handle<v8::Value> args[1] = { v8pp::to_v8(isolate, files) };
+	emit("drag_accept_files", v8pp::to_v8(isolate, this), 1, args);
 }
 
 input_event::input_event(event const& e)
@@ -727,7 +727,7 @@ uint32_t input_event::mouse_type_and_state(UINT message, WPARAM wparam)
 		result = MOUSE_CLICK | ((3 + HIWORD(wparam)) << BUTTON_SHIFT);
 		break;
 	default:
-		_aspect_assert(false && "unknown mouse message");
+		assert(false && "unknown mouse message");
 		result = UNKNOWN;
 		break;
 	}
@@ -763,7 +763,7 @@ uint32_t input_event::key_type_and_state(UINT message)
 		result = KEY_CHAR;
 		break;
 	default:
-		_aspect_assert(false && "unknown key message");
+		assert(false && "unknown key message");
 		result = UNKNOWN;
 		break;
 	}
@@ -800,15 +800,15 @@ void window::run_file_dialog(v8::FunctionCallbackInfo<v8::Value> const& args)
 	{
 		v8::Local<v8::Object> options = args[0]->ToObject();
 
-		get_option(isolate, options, "type", type);
+		v8pp::get_option(isolate, options, "type", type);
 		if (type == "open")
 		{
-			get_option(isolate, options, "multiselect", multiselect);
+			v8pp::get_option(isolate, options, "multiselect", multiselect);
 		}
-		get_option(isolate, options, "title", title);
+		v8pp::get_option(isolate, options, "title", title);
 
 		v8::Local<v8::Object> filter_obj;
-		if (get_option(isolate, options, "filter", filter_obj))
+		if (v8pp::get_option(isolate, options, "filter", filter_obj))
 		{
 			v8::Local<v8::Array> filter_keys = filter_obj->GetPropertyNames();
 			for (uint32_t i = 0, count = filter_keys->Length(); i < count; ++i)
@@ -825,16 +825,16 @@ void window::run_file_dialog(v8::FunctionCallbackInfo<v8::Value> const& args)
 			}
 		}
 
-		get_option(isolate, options, "defaultDir", default_dir);
+		v8pp::get_option(isolate, options, "defaultDir", default_dir);
 
-		get_option(isolate, options, "defaultExt", default_ext);
+		v8pp::get_option(isolate, options, "defaultExt", default_ext);
 		if (!default_ext.empty() && default_ext[0] == L'.')
 		{
 			default_ext.erase(0, 1);
 		}
 
 		std::wstring default_name;
-		if (get_option(isolate, options, "defaultName", default_name))
+		if (v8pp::get_option(isolate, options, "defaultName", default_name))
 		{
 			std::copy(default_name.begin(), default_name.end(), std::back_inserter(filename_buf));
 		}

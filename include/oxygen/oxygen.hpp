@@ -1,12 +1,4 @@
-#include "jsx/core.hpp"
-#include "jsx/v8_core.hpp"
-#include "jsx/async_queue.hpp"
-#include "jsx/events.hpp"
-#include "jsx/runtime.hpp"
-#include "jsx/v8_main_loop.hpp"
-#include "jsx/geometry.hpp"
-
-#if OS(WINDOWS)
+#if _MSC_VER
 //	#pragma warning ( disable : 4251 )
 #if defined(OXYGEN_EXPORTS)
 #define OXYGEN_API __declspec(dllexport)
@@ -21,9 +13,9 @@
 
 #include "oxygen/display.hpp"
 #include "oxygen/gui.hpp"
-#if OS(WINDOWS)
+#if defined(_WIN32)
 #include "oxygen/gui.windows.hpp"
-#elif OS(DARWIN)
+#elif defined(__APPLE__)
 #include "oxygen/gui.mac.hpp"
 #else
 #include "oxygen/gui.x11.hpp"

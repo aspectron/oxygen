@@ -1,6 +1,8 @@
 #include "oxygen/oxygen.hpp"
 #include "oxygen/display.hpp"
 
+#include <cassert>
+
 namespace aspect {  namespace gui {
 
 static display init(HMONITOR monitor)
@@ -75,7 +77,7 @@ std::vector<display> display::enumerate()
 	{
 		// make primary display first
 		std::swap(result[0], result[primary_index]);
-		_aspect_assert(result[0] == primary());
+		assert(result[0] == primary());
 	}
 
 	return result;
@@ -100,7 +102,7 @@ std::vector<display::mode> display::modes() const
 {
 	std::vector<mode> result;
 
-	DEVMODE devmode;
+	DEVMODEW devmode;
 	devmode.dmSize = sizeof(devmode);
 	for (int i = 0; EnumDisplaySettingsW(name.c_str(), i, &devmode); ++i)
 	{
@@ -114,7 +116,7 @@ std::vector<display::mode> display::modes() const
 
 display::mode display::current_mode() const
 {
-	DEVMODE devmode;
+	DEVMODEW devmode;
 	devmode.dmSize = sizeof(devmode);
 	EnumDisplaySettingsW(name.c_str(), ENUM_CURRENT_SETTINGS, &devmode);
 	

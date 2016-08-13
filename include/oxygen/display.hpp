@@ -3,22 +3,24 @@
 
 #include <vector>
 #include <tuple>
-#include <boost/operators.hpp>
 
-#if OS(WINDOWS)
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#elif OS(DARWIN)
+#elif defined(__APPLE__)
 #include <CoreGraphics/CGDirectDisplay.h>
 #else
 #include <X11/extensions/Xrandr.h>
 #endif
+
+#include "image/jsx/geometry.hpp"
 
 namespace aspect { namespace gui {
 
 class window;
 
 /// Display information
-struct OXYGEN_API display : boost::equality_comparable<display>
+struct OXYGEN_API display
 {
 	/// Enumerate all available displays
 	static std::vector<display> enumerate();
@@ -30,9 +32,9 @@ struct OXYGEN_API display : boost::equality_comparable<display>
 	/// If no window is supplied, use the display for the active window
 	static display from_window(window const* w = nullptr);
 
-#if OS(WINDOWS)
+#if defined(_WIN32)
 	std::wstring name;
-#elif OS(DARWIN)
+#elif defined(__APPLE__)
 	CGDirectDisplayID id;
 	std::string name;
 #else
@@ -44,6 +46,11 @@ struct OXYGEN_API display : boost::equality_comparable<display>
 	bool operator==(display const& other) const
 	{
 		return name == other.name;
+	}
+
+	bool operator!=(display const& other) const
+	{
+		return !(*this == other);
 	}
 
 	/// Ratio between physical and logical pixels
@@ -62,7 +69,7 @@ struct OXYGEN_API display : boost::equality_comparable<display>
 	rectangle<int> work_rect;
 
 	/// Display mode information
-	struct mode : boost::totally_ordered<mode>
+	struct mode
 	{
 	public:
 
@@ -101,19 +108,18 @@ struct OXYGEN_API display : boost::equality_comparable<display>
 
 }} // aspect::gui
 
-namespace v8pp {
-
 template<>
-struct convert<aspect::gui::display::mode>
+struct v8pp::convert<aspect::gui::display::mode>
 {
-	typedef aspect::gui::display::mode result_type;
+	using from_type =  aspect::gui::display::mode;
+	using to_type = v8::Handle<v8::Object>;
 
 	static bool is_valid(v8::Isolate*, v8::Handle<v8::Value> value)
 	{
 		return value->IsObject();
 	}
 
-	static result_type from_v8(v8::Isolate* isolate, v8::Handle<v8::Value> value)
+	static from_type from_v8(v8::Isolate* isolate, v8::Handle<v8::Value> value)
 	{
 		if (!value->IsObject())
 		{
@@ -131,10 +137,10 @@ struct convert<aspect::gui::display::mode>
 			throw std::invalid_argument("expected {width, height, colorDepth, frequency} object");
 		}
 		get_option(isolate, obj, "frequency", frequency);
-		return result_type(width, height, bpp, frequency);
+		return from_type(width, height, bpp, frequency);
 	}
 
-	static v8::Handle<v8::Value> to_v8(v8::Isolate* isolate, aspect::gui::display::mode const& value)
+	static to_type to_v8(v8::Isolate* isolate, aspect::gui::display::mode const& value)
 	{
 		v8::EscapableHandleScope scope(isolate);
 
@@ -147,7 +153,5 @@ struct convert<aspect::gui::display::mode>
 		return scope.Escape(obj);
 	}
 };
-
-} // v8pp
 
 #endif // OXYGEN_DISPLAY_HPP_INCLUDED

@@ -1,9 +1,10 @@
 #ifndef OXYGEN_KEYS_HPP_INCLUDED
 #define OXYGEN_KEYS_HPP_INCLUDED
 
-#if OS(WINDOWS)
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#elif OS(DARWIN)
+#elif defined(__APPLE__)
 #include <Carbon/Carbon.h>
 #else
 #define XK_MISCELLANY
@@ -16,7 +17,7 @@ namespace aspect { namespace gui {
 // System-dependent virtual key codes
 enum key_code
 {
-#if OS(WINDOWS)
+#if defined(_WIN32)
 	KEY_BACKSPACE = VK_BACK,
 	KEY_TAB = VK_TAB,
 	KEY_RETURN = VK_RETURN,
@@ -91,7 +92,7 @@ enum key_code
 	KEY_CAPS_LOCK = VK_CAPITAL,
 	KEY_NUM_LOCK = VK_NUMLOCK,
 	KEY_SCROLL_LOCK = VK_SCROLL,
-#elif OS(DARWIN)
+#elif defined(__APPLE__)
 	KEY_BACKSPACE = kVK_Delete,
 	KEY_TAB = kVK_Tab,
 	KEY_RETURN = kVK_Return,

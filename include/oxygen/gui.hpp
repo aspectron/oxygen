@@ -1,9 +1,10 @@
 #ifndef OXYGEN_GUI_HPP_INCLUDED
 #define OXYGEN_GUI_HPP_INCLUDED
 
-#if OS(WINDOWS)
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#elif OS(DARWIN)
+#elif defined(__APPLE__)
 	#ifdef __OBJC__
 	#import <Cocoa/Cocoa.h>
 	#else
@@ -13,6 +14,10 @@
 #else
 #include <X11/Xlib.h>
 #endif
+
+#include <list>
+
+#include "oxygen/nodeutil.hpp"
 
 namespace aspect { namespace gui {
 
@@ -34,7 +39,7 @@ struct OXYGEN_API creation_args
 	int left, top, width, height;
 	unsigned bpp, style;
 
-#if OS(WINDOWS)
+#if defined(_WIN32)
 	std::wstring caption;
 	std::wstring splash;
 	std::wstring icon;
@@ -61,7 +66,7 @@ struct graphics_settings
 	unsigned int antialiasing_level;
 };
 
-#if OS(WINDOWS)
+#if defined(_WIN32)
 struct OXYGEN_API event
 {
 	HWND window;
@@ -79,7 +84,7 @@ struct OXYGEN_API event
 	{
 	} 
 };
-#elif OS(DARWIN)
+#elif defined(__APPLE__)
 typedef NSEvent* event;
 #else
 typedef XEvent event;
@@ -189,10 +194,10 @@ private:
 	static uint32_t const STATE_MASK  = 0xFFFF0000;
 	static uint32_t const STATE_SHIFT = 16;
 
-#if OS(WINDOWS)
+#if defined(_WIN32)
 	static uint32_t mouse_type_and_state(UINT message, WPARAM wparam);
 	static uint32_t key_type_and_state(UINT message);
-#elif OS(DARWIN)
+#elif defined(__APPLE__)
 	static uint32_t type_and_state(int type, unsigned int modifiers);
 #else
 	static uint32_t type_and_state(int type, unsigned int state);
@@ -234,18 +239,15 @@ private:
 
 class event_sink;
 
-class OXYGEN_API window_base : public v8_core::event_emitter
+class OXYGEN_API window_base : public event_emitter
 {
 	friend class event_sink;
 public:
-	explicit window_base(runtime& rt)
-		: rt_(rt)
-		, size_(0, 0)
+	window_base()
+		: size_(0, 0)
 		, style_(0)
 	{
 	}
-
-	runtime& rt() const { return rt_; }
 
 	// Window size
 	box<int> const& size() const { return size_; }
@@ -264,7 +266,6 @@ protected:
 	void on_input(input_event const& e);
 	void on_event(std::string const& type);
 
-	runtime& rt_;
 	box<int> size_;
 	unsigned style_;
 

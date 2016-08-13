@@ -1,11 +1,11 @@
-pragma("event-queue");
+//pragma("event-queue");
 
-var oxygen = require("oxygen");
+var oxygen = require("..");
 
 
 oxygen.Display.enumerate().forEach(function(display)
 	{
-		console.log("display name: %s colorDepth: %d rectangle: %o workRectangle: %o",
+		console.log("display name: %s colorDepth: %d rectangle: %j workRectangle: %j",
 			display.name, display.colorDepth, display.rectangle, display.workRectangle);
 		console.log('display modes:', display.modes());
 		console.log('display current mode:', display.currentMode());
@@ -59,3 +59,5 @@ console.log(window.runFileDialog({
 		'*.*': 'All files',
 	},
 }));
+
+process.stdin.resume();

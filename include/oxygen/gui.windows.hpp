@@ -1,10 +1,9 @@
 #ifndef OXYGEN_GUI_WINDOWS_HPP_INCLUDED
 #define OXYGEN_GUI_WINDOWS_HPP_INCLUDED
 
-#include <boost/atomic.hpp>
-#include <boost/scoped_array.hpp>
+#include <atomic>
 
-#include "jsx/geometry.hpp"
+#include "image/jsx/geometry.hpp"
 #include "oxygen/gui.hpp"
 
 namespace aspect { namespace gui {
@@ -56,10 +55,9 @@ private:
 	bool process(event& e);
 
 	typedef std::vector<std::wstring> wstrings;
-	typedef boost::shared_ptr<wstrings> shared_wstrings;
 
 	void drag_accept_files_enable_impl(bool enable);
-	void drag_accept_files(shared_wstrings files);
+	void drag_accept_files(wstrings files);
 
 private:
 	// handlers in V8 thread
@@ -72,12 +70,12 @@ private:
 	bool forced_cursor_, is_cursor_visible_;
 	bool fullscreen_;
 	WINDOWPLACEMENT prev_placement_;
-	boost::atomic<int> capture_count_;
+	std::atomic<int> capture_count_;
 
 	bool message_handling_enabled_;
 	bool drag_accept_files_enabled_;
 
-	boost::scoped_array<uint8_t> splash_bitmap_;
+	std::vector<uint8_t> splash_bitmap_;
 };
 
 }} // aspect::gui

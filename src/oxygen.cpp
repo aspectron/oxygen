@@ -1,7 +1,11 @@
 #include "oxygen/oxygen.hpp"
 #include "oxygen/keys.hpp"
 
-#include "jsx/library.hpp"
+#include <node.h>
+
+#include <v8pp/module.hpp>
+#include <v8pp/class.hpp>
+#include <v8pp/convert.hpp>
 
 namespace aspect { namespace gui {
 
@@ -38,13 +42,19 @@ static void display_from_window_v8(v8::FunctionCallbackInfo<v8::Value> const& ar
 	args.GetReturnValue().Set(v8pp::class_<display>::import_external(isolate, new display(display::from_window(wnd))));
 }
 
-DECLARE_LIBRARY_ENTRYPOINTS(oxygen_install, oxygen_uninstall);
-
-v8::Handle<v8::Value> oxygen_install(v8::Isolate* isolate)
+static void init(v8::Handle<v8::Object> exports, v8::Handle<v8::Object> module)
 {
 	window::init();
 
+	v8::Isolate* isolate = v8::Isolate::GetCurrent();
 	v8pp::module oxygen_module(isolate);
+
+	v8pp::class_<event_emitter> event_emitter_class(isolate);
+	event_emitter_class
+		.set("on", &event_emitter::on)
+		.set("off", &event_emitter::off)
+		;
+	oxygen_module.set("EventEmitter", event_emitter_class);
 
 	/**
 	@module oxygen Oxygen
@@ -63,7 +73,7 @@ v8::Handle<v8::Value> oxygen_install(v8::Isolate* isolate)
 	  * `colorDepth`  - display color depth, bits per pixel
 	  * `frequency`   - display refresh rate, Hz
 	**/
-	v8pp::class_<display> display_class(isolate, v8pp::no_ctor);
+	v8pp::class_<display> display_class(isolate);
 	display_class
 		/**
 		@function enumerate()
@@ -194,9 +204,10 @@ v8::Handle<v8::Value> oxygen_install(v8::Isolate* isolate)
 	  To set default window dimensions in Windows use zero for `width` and `height`.
 	  If `left` and `top` is unspecified, the window is centered on the screen.
 	**/
-	v8pp::class_<window> window_class(isolate, v8pp::v8_args_ctor);
+	v8pp::class_<window> window_class(isolate);
 	window_class
-		.inherit<v8_core::event_emitter>()
+		.ctor<v8::FunctionCallbackInfo<v8::Value> const&>()
+		.inherit<event_emitter>()
 		/**
 		@function destroy()
 		Close and destroy window instance
@@ -301,7 +312,7 @@ v8::Handle<v8::Value> oxygen_install(v8::Isolate* isolate)
 		});
 		```
 		**/
-#if OS(WINDOWS) || OS(DARWIN)
+#if defined(_WIN32) || defined(__APPLE__)
 		.set("runFileDialog", &window::run_file_dialog)
 #endif
 		.set("show_frame", &window::show_frame)
@@ -429,14 +440,15 @@ v8::Handle<v8::Value> oxygen_install(v8::Isolate* isolate)
 #undef CURSOR
 	oxygen_module.set("cursors", cursors);
 
-	return oxygen_module.new_instance();
+	node::AtExit([](void*)
+	{
+		v8pp::class_<window>::destroy_objects(v8::Isolate::GetCurrent());
+		window::cleanup();
+	}, nullptr);
+
+	exports->SetPrototype(oxygen_module.new_instance());
 }
 
-void oxygen_uninstall(v8::Isolate* isolate, v8::Handle<v8::Value> library)
-{
-	(void)library;
-	v8pp::class_<window>::destroy_objects(isolate);
-	window::cleanup();
-}
+NODE_MODULE(oxygen, init)
 
 }} // ::aspect::gui
