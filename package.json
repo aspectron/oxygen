@@ -3,13 +3,9 @@
   "version": "1.0.0",
   "description": "Window managment",
   "main": "build/Release/oxygen.node",
-  "scripts": {
-    "install": "node-gyp rebuild"
-  },
   "repository": { "type": "git", "url": "git://github.com/aspectron/oxygen.git" },
   "author": "Aspectorn Inc.",
   "license": "MIT",
-  "gypfile": true,
   "bugs": { "url": "https://github.com/aspectron/oxygen/issues" },
   "homepage": "https://github.com/aspectron/oxygen#readme",
   "dependencies": {
