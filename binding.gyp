@@ -66,7 +66,7 @@
                     'action_name': 'gendoc',
                     'inputs': ['src/oxygen.cpp'],
                     'outputs': ['doc/all.md'],
-                    'action': ['<!(npm bin)/gendoc', 'Oxygen', 'doc', '<@(_inputs)'],
+                    'action': ['<!(npm bin)/gendoc Oxygen', 'doc', '<@(_inputs)'],
                     'message': 'Building JavaScript API documentation...',
                 },
             ],
