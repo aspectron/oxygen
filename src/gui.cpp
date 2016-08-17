@@ -27,8 +27,8 @@ creation_args::creation_args(v8::FunctionCallbackInfo<v8::Value> const& args)
 
 	v8pp::get_option(isolate, options, "width", width = curr_mode.width);
 	v8pp::get_option(isolate, options, "height", height = curr_mode.height);
-	v8pp::get_option(isolate, options, "left", left = max(int(curr_mode.width - width) / 2, 0));
-	v8pp::get_option(isolate, options, "top", top = max(int(curr_mode.height - height) / 2, 0));
+	v8pp::get_option(isolate, options, "left", left = std::max(int(curr_mode.width - width) / 2, 0));
+	v8pp::get_option(isolate, options, "top", top = std::max(int(curr_mode.height - height) / 2, 0));
 	v8pp::get_option(isolate, options, "bpp", bpp = curr_mode.bpp);
 	v8pp::get_option(isolate, options, "style", style = GWS_TITLEBAR | GWS_RESIZE | GWS_CLOSE | GWS_APPWINDOW);
 	v8pp::get_option(isolate, options, "caption", caption);
