@@ -18,6 +18,7 @@
                 'include_dirs': ['<@(include_dirs)'],
             },
             'defines': ['OXYGEN_EXPORTS'],
+            'defines!': ['V8_DEPRECATION_WARNINGS=1'],
             'sources': [
                 'include/oxygen/gui.hpp',
                 'include/oxygen/display.hpp',
