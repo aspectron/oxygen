@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-#include "image/jsx/geometry.hpp"
+#include "nitrogen/geometry.hpp"
 
 #include <v8pp/class.hpp>
 #include <v8pp/object.hpp>

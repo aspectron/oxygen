@@ -3,7 +3,7 @@
 
 #include <atomic>
 
-#include "image/jsx/geometry.hpp"
+#include "nitrogen/geometry.hpp"
 #include "oxygen/gui.hpp"
 
 namespace aspect { namespace gui {

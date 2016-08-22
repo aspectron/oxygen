@@ -10,6 +10,7 @@
   "homepage": "https://github.com/aspectron/oxygen#readme",
   "dependencies": {
     "v8pp": "^1.0",
+    "nitrogen": "git+ssh://github.com/aspectron/nitrogen.git#nodejs",
     "image": "https://github.com/aspectron/image.git#nodejs",
     "gendoc": "https://github.com/aspectron/gendoc"
   }

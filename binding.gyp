@@ -3,7 +3,7 @@
         'include_dirs': [
             'include',
             '<!(node -e require(\'v8pp\'))',
-            '<!(node print_deps.js include)',
+            '<!@(<!(npm bin)/pkgdeps include nitrogen)',
         ],
      },
     'targets': [
@@ -24,7 +24,6 @@
                 'include/oxygen/display.hpp',
                 'include/oxygen/keys.hpp',
                 'include/oxygen/oxygen.hpp',
-                'include/oxygen/nodeutil.hpp',
                 'src/gui.cpp',
                 'src/oxygen.cpp',
             ],
@@ -35,7 +34,7 @@
                         'src/gui.windows.cpp',
                         'include/oxygen/gui.windows.hpp',
                     ],
-                    'libraries': ['<!(node print_deps.js lib)'],
+                    'libraries': ['<!@(<!(npm bin)/pkgdeps lib nitrogen)'],
                 }],
                 ['OS=="mac"', {
                     'sources': [

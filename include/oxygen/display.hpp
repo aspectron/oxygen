@@ -14,7 +14,7 @@
 #include <X11/extensions/Xrandr.h>
 #endif
 
-#include "image/jsx/geometry.hpp"
+#include "nitrogen/geometry.hpp"
 
 namespace aspect { namespace gui {
 

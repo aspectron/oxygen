@@ -47,20 +47,13 @@ static void init(v8::Handle<v8::Object> exports, v8::Handle<v8::Object> module)
 	window::init();
 
 	v8::Isolate* isolate = v8::Isolate::GetCurrent();
-	v8pp::module oxygen_module(isolate);
-
-	v8pp::class_<event_emitter> event_emitter_class(isolate);
-	event_emitter_class
-		.set("on", &event_emitter::on)
-		.set("off", &event_emitter::off)
-		;
-	oxygen_module.set("EventEmitter", event_emitter_class);
 
 	/**
 	@module oxygen Oxygen
 
 	Window library for JavaScript.
 	**/
+	v8pp::module oxygen_module(isolate);
 
 	/**
 	@class Display

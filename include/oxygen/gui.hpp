@@ -18,7 +18,7 @@
 
 #include <list>
 
-#include "oxygen/nodeutil.hpp"
+#include "nitrogen/nodeutil.hpp"
 
 namespace aspect { namespace gui {
 
