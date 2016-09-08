@@ -5,7 +5,8 @@
 
 #include <v8pp/module.hpp>
 #include <v8pp/class.hpp>
-#include <v8pp/convert.hpp>
+
+#include "nitrogen/nodeutil.hpp"
 
 namespace aspect { namespace gui {
 
@@ -44,6 +45,8 @@ static void display_from_window_v8(v8::FunctionCallbackInfo<v8::Value> const& ar
 
 static void init(v8::Handle<v8::Object> exports, v8::Handle<v8::Object> module)
 {
+	require(module, "nitrogen");
+
 	window::init();
 
 	v8::Isolate* isolate = v8::Isolate::GetCurrent();

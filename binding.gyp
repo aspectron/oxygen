@@ -1,4 +1,5 @@
 {
+    'includes': ['node_modules/nitrogen/common.gypi'],
     'variables': {
         'include_dirs': [
             'include',
@@ -10,15 +11,14 @@
         {
             'target_name': 'oxygen',
             'dependencies': ['oxygen-doc'],
-            'cflags_cc+': ['-std=c++11', '-fexceptions'],
-            'msvs_settings': { 'VCCLCompilerTool': { 'ExceptionHandling': 1 } },
-            'xcode_settings': { 'GCC_ENABLE_CPP_EXCEPTIONS': 'YES' },
+            'msvs_settings': { 'VCLinkerTool': {
+                'DelayLoadDLLs': ['nitrogen.node']
+            }},
             'include_dirs': ['<@(include_dirs)'],
             'direct_dependent_settings': {
                 'include_dirs': ['<@(include_dirs)'],
             },
             'defines': ['OXYGEN_EXPORTS'],
-            'defines!': ['V8_DEPRECATION_WARNINGS=1'],
             'sources': [
                 'include/oxygen/gui.hpp',
                 'include/oxygen/display.hpp',

@@ -2,7 +2,7 @@
   "name": "oxygen",
   "version": "1.0.0",
   "description": "Window managment",
-  "main": "build/Release/oxygen.node",
+  "main": "./build/Release/oxygen.node",
   "repository": { "type": "git", "url": "git://github.com/aspectron/oxygen.git" },
   "author": "Aspectorn Inc.",
   "license": "MIT",
@@ -10,8 +10,7 @@
   "homepage": "https://github.com/aspectron/oxygen#readme",
   "dependencies": {
     "v8pp": "^1.0",
-    "nitrogen": "git+ssh://github.com/aspectron/nitrogen.git#nodejs",
-    "image": "https://github.com/aspectron/image.git#nodejs",
+    "nitrogen": "https://github.com/aspectron/nitrogen.git#nodejs",
     "gendoc": "https://github.com/aspectron/gendoc"
   }
 }
