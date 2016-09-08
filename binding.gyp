@@ -3,7 +3,7 @@
         'include_dirs': [
             'include',
             '<!(node -e require(\'v8pp\'))',
-            '<!@(<!(npm bin)/pkgdeps include nitrogen)',
+            '<!@(pkgdeps include nitrogen)',
         ],
      },
     'targets': [
@@ -34,7 +34,7 @@
                         'src/gui.windows.cpp',
                         'include/oxygen/gui.windows.hpp',
                     ],
-                    'libraries': ['<!@(<!(npm bin)/pkgdeps lib nitrogen)'],
+                    'libraries': ['<!@(pkgdeps lib nitrogen)'],
                 }],
                 ['OS=="mac"', {
                     'sources': [
@@ -66,7 +66,7 @@
                     'action_name': 'gendoc',
                     'inputs': ['src/oxygen.cpp'],
                     'outputs': ['doc/all.md'],
-                    'action': ['<!(npm bin)/gendoc Oxygen', 'doc', '<@(_inputs)'],
+                    'action': ['gendoc Oxygen', 'doc', '<@(_inputs)'],
                     'message': 'Building JavaScript API documentation...',
                 },
             ],
