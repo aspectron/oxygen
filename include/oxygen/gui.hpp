@@ -308,29 +308,23 @@ private:
 
 }} // aspect::gui
 
-namespace v8pp {
-
 template<>
-struct convert<aspect::gui::input_event>
+struct v8pp::convert<aspect::gui::input_event>
 {
-	typedef aspect::gui::input_event result_type;
-
 	static bool is_valid(v8::Isolate*, v8::Handle<v8::Value> value)
 	{
 		return value->IsObject();
 	}
 
-	static result_type from_v8(v8::Isolate* isolate, v8::Handle<v8::Value> value)
+	static auto from_v8(v8::Isolate* isolate, v8::Handle<v8::Value> value)
 	{
 		return aspect::gui::input_event::from_v8(isolate, value);
 	}
 
-	static v8::Handle<v8::Value> to_v8(v8::Isolate* isolate, aspect::gui::input_event const& ev)
+	static auto to_v8(v8::Isolate* isolate, aspect::gui::input_event const& ev)
 	{
 		return ev.to_v8(isolate);
 	}
 };
-
-} //v8pp
 
 #endif // OXYGEN_GUI_HPP_INCLUDED
