@@ -43,9 +43,11 @@ static void display_from_window_v8(v8::FunctionCallbackInfo<v8::Value> const& ar
 	args.GetReturnValue().Set(v8pp::class_<display>::import_external(isolate, new display(display::from_window(wnd))));
 }
 
+static required_modules modules;
+
 static void init(v8::Handle<v8::Object> exports, v8::Handle<v8::Object> module)
 {
-	require(module, "nitrogen");
+	modules.load(module, { "nitrogen" });
 
 	window::init();
 
@@ -440,6 +442,7 @@ static void init(v8::Handle<v8::Object> exports, v8::Handle<v8::Object> module)
 	{
 		v8pp::class_<window>::destroy_objects(v8::Isolate::GetCurrent());
 		window::cleanup();
+		modules.unload();
 	}, nullptr);
 
 	exports->SetPrototype(oxygen_module.new_instance());
